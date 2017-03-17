@@ -4,6 +4,7 @@ import javax.swing.*;
 import java.awt.*;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
+import java.awt.event.MouseMotionAdapter;
 import java.awt.image.BufferedImage;
 import java.awt.image.WritableRaster;
 
@@ -14,12 +15,33 @@ import static java.lang.Math.abs;
  */
 public class DrawPanel extends JPanel implements MouseListener {
     BufferedImage img;
+    WritableRaster raster;
     public DrawPanel()
     {
         super(new BorderLayout());
         //this.setAutoscrolls(true);
         this.setOpaque(true);
+        img = new BufferedImage( 800,500, BufferedImage.TYPE_3BYTE_BGR );
+        this.setPreferredSize(new Dimension(img.getWidth(), img.getHeight()));
+        raster = img.getRaster();
         addMouseListener(this);
+        int[] basicColor = { 255, 255, 255, 0 }; //
+        for ( int i = 0; i < img.getHeight(); i++ )
+        {
+            for ( int j = 0; j < img.getWidth(); j++ )
+            {
+                raster.setPixel(j, i, basicColor ); // basically it's black. so let's bake it gray
+            }
+        }
+        drawField(25,20,raster );
+        this.addMouseMotionListener(new MouseMotionAdapter() {
+            @Override
+            public void mouseDragged(MouseEvent e) {
+                System.out.println(e.getX() + " " +  e.getY() );
+                //span(e.getX(), e.getY(), Color.GREEN);
+                super.mouseDragged(e);
+            }
+        });
     }
     @Override
     public void mouseExited(MouseEvent e )
@@ -44,6 +66,7 @@ public class DrawPanel extends JPanel implements MouseListener {
     public void mouseClicked(MouseEvent e )
     {
         //System.out.println("Clicked: " + e.getX() + " " + e.getY() );
+        span(e.getX(), e.getY(),Color.GREEN);
     }
 
     void myLine(int x1, int y1, int x2, int y2, WritableRaster raster )
@@ -114,26 +137,13 @@ public class DrawPanel extends JPanel implements MouseListener {
     {
         super.paint(g);
         int[] iArray = { 255, 255, 0, 0 }; // yellow
-        int[] basicColor = { 255, 255, 255, 0 }; //
-
-        img = new BufferedImage( 800,500, BufferedImage.TYPE_3BYTE_BGR );
-
 
         //img = (BufferedImage) createImage(800, 500 );
-        WritableRaster raster = img.getRaster();
 
-        System.out.print("Img: " + img.getWidth() );
-        for ( int i = 0; i < img.getHeight(); i++ )
-        {
-            for ( int j = 0; j < img.getWidth(); j++ )
-            {
-                raster.setPixel(j, i, basicColor ); // basically it's black. so let's bake it gray
-            }
-        }
+
         //drawHexagon(0, 7, raster);
         //drawHexagon(28, 7, raster);
-        drawField(25,20,raster );
-        System.out.print("A");
+        //System.out.print("A");
         //drawHexagon(7*28 , 0*23 + 7, raster );
         //myLine(8*28,23, 8*28, 7, raster );
         /*myLine(0,7,0,23 ,raster);
@@ -143,9 +153,55 @@ public class DrawPanel extends JPanel implements MouseListener {
         myLine(14,0,28,7 ,raster);
         myLine(0,7,14,0 ,raster);*/
 
-        this.setPreferredSize(new Dimension(img.getWidth(), img.getHeight()));
 
         //this.scrollRectToVisible(new Rectangle(0,0,img.getWidth(),img.getHeight()));
         g.drawImage(img, 0, 0, img.getWidth(), img.getHeight(), null );
+    }
+    void span(int x, int y, Color color )
+    {
+        int[] gotColor = null;
+        int[] blackColor = {0,0,0};
+        int[] placeColor = {color.getRed(), color.getGreen(), color.getBlue(), 0};
+        int x1, x2;
+        gotColor = raster.getPixel(x, y, gotColor) ;
+        if ( blackColor[0] == gotColor[0] && blackColor[1] == gotColor[1] && blackColor[2] == gotColor[2] )
+            return; // lets us ignore black borders
+
+        int[] borders = spanBorders(x,y);
+        fillSpan(borders[0], borders[1], y, color);
+        this.repaint();
+    }
+    int[] spanBorders(int x, int y)
+    {
+        int[] blackColor = {0,0,0};
+        int[] gotColor = null;
+        int[] borders = new int[2];
+        for ( int i = x+1; ; i++ )
+        {
+            gotColor = raster.getPixel(i, y, gotColor) ;
+            if ( blackColor[0] == gotColor[0] && blackColor[1] == gotColor[1] && blackColor[2] == gotColor[2] )
+            {
+                borders[1] = i-1;
+                break;
+            }
+        }
+        for ( int i = x-1; ; i-- )
+        {
+            gotColor = raster.getPixel(i, y, gotColor) ;
+            if ( blackColor[0] == gotColor[0] && blackColor[1] == gotColor[1] && blackColor[2] == gotColor[2] )
+            {
+                borders[0] = i+1;
+                break;
+            }
+        }
+        return borders;
+    }
+    void fillSpan(int x1, int x2, int y, Color color )
+    {
+        int[] placeColor = {color.getRed(), color.getGreen(), color.getBlue(), 0};
+        for ( int i = x1; i < x2; i++ )
+        {
+            raster.setPixel(i, y, placeColor);
+        }
     }
 }
