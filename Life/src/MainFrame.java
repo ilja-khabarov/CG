@@ -1,8 +1,6 @@
 import javax.swing.*;
 import java.awt.*;
-import java.awt.event.KeyEvent;
-import java.awt.event.MouseEvent;
-import java.awt.event.MouseListener;
+import java.awt.event.*;
 import java.awt.image.BufferedImage;
 
 /**
@@ -12,6 +10,7 @@ public class MainFrame extends JFrame
 {
     private JMenuBar menuBar;
     private JToolBar toolBar;
+    DrawPanel drawPanel;
 
     public MainFrame()
     {
@@ -20,9 +19,40 @@ public class MainFrame extends JFrame
 
         JButton btn = new JButton("Btn");
         btn.setSize(20,20);
+        JButton clearButton = new JButton("Clr");
+        clearButton.setSize(20,20);
+        JButton xorButton = new JButton("X");
+        xorButton.setSize(20,20);
+
+        clearButton.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                System.out.println("Command caught: " + e.getActionCommand() );
+                drawPanel.clearSockets();
+            }
+
+        });
+        xorButton.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                if (drawPanel.xormode)
+                {
+                    drawPanel.setXormode(false);
+                    xorButton.setText("R");
+                }
+                else {
+                    drawPanel.setXormode(true);
+                    xorButton.setText("X");
+                }
+                drawPanel.repaint();
+                xorButton.repaint();
+            }
+        });
         menuBar = new JMenuBar();
         toolBar = new JToolBar("MaiNToolbar");
         toolBar.add(btn);
+        toolBar.add(clearButton);
+        toolBar.add(xorButton);
         menuBar.setVisible(true);
 
         JMenu menu = new JMenu("File");
@@ -78,7 +108,7 @@ public class MainFrame extends JFrame
         this.setJMenuBar(menuBar);
         this.add(toolBar, BorderLayout.PAGE_START );
 
-        DrawPanel drawPanel = new DrawPanel();
+        drawPanel = new DrawPanel();
         drawPanel.setBackground(Color.white);
         //drawPanel.setSize(800,500);
         JScrollPane scrollPane = new JScrollPane(drawPanel);

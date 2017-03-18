@@ -16,9 +16,11 @@ import static java.lang.Math.abs;
 public class DrawPanel extends JPanel implements MouseListener {
     BufferedImage img;
     WritableRaster raster;
+    boolean xormode;
     public DrawPanel()
     {
         super(new BorderLayout());
+        xormode = false;
         //this.setAutoscrolls(true);
         this.setOpaque(true);
         img = new BufferedImage( 800,500, BufferedImage.TYPE_3BYTE_BGR );
@@ -37,11 +39,46 @@ public class DrawPanel extends JPanel implements MouseListener {
         this.addMouseMotionListener(new MouseMotionAdapter() {
             @Override
             public void mouseDragged(MouseEvent e) {
-                System.out.println(e.getX() + " " +  e.getY() );
-                //span(e.getX(), e.getY(), Color.GREEN);
+                int[] clrbuff= null;
+                int[] checkColor = null;
+                int x = e.getX(); int y = e.getY();
+                try {
+                    clrbuff = raster.getPixel(e.getX(), e.getY(), clrbuff);
+                    {
+                        for ( int i = y; i < raster.getHeight()+1; i++ )
+                        {
+                            checkColor = raster.getPixel(x,i,checkColor);
+                            if ( checkColor[0] == 0 && checkColor[1] == 0 && checkColor[2] == 0 )
+                                break;
+                        }
+                        for ( int i = y; i < raster.getHeight()+1; i-- )
+                        {
+                            checkColor = raster.getPixel(x,i,checkColor);
+                            if ( checkColor[0] == 0 && checkColor[1] == 0 && checkColor[2] == 0 )
+                                break;
+                        }
+                        if (xormode) {
+                            System.out.println(xormode);
+                            if (xormode && clrbuff[0] == 255 && clrbuff[1] == 255 && clrbuff[2] == 255)
+                                span(e.getX(), e.getY(), Color.GREEN);
+                            if (xormode && clrbuff[0] == 0 && clrbuff[1] == 255 && clrbuff[2] == 0)
+                                span(e.getX(), e.getY(), Color.WHITE);
+                        }
+                        if ( !xormode )
+                            span(e.getX(), e.getY(), Color.GREEN);
+                    }
+                } catch(ArrayIndexOutOfBoundsException oob ) {
+                    return;
+                }
+                repaint();
+
                 super.mouseDragged(e);
             }
         });
+    }
+    void setXormode(boolean mode)
+    {
+        this.xormode = mode;
     }
     @Override
     public void mouseExited(MouseEvent e )
@@ -66,7 +103,44 @@ public class DrawPanel extends JPanel implements MouseListener {
     public void mouseClicked(MouseEvent e )
     {
         //System.out.println("Clicked: " + e.getX() + " " + e.getY() );
-        span(e.getX(), e.getY(),Color.GREEN);
+        int x = e.getX(); int y = e.getY();
+
+        int[] clrbuff= null;
+        int[] checkColor = null;
+        clrbuff = raster.getPixel(e.getX(), e.getY(), clrbuff);
+        try
+        {
+            for ( int i = y; i < raster.getHeight()+1; i++ )
+            {
+                checkColor = raster.getPixel(x,i,checkColor);
+                if ( checkColor[0] == 0 && checkColor[1] == 0 && checkColor[2] == 0 )
+                    break;
+            }
+            for ( int i = y; i < raster.getHeight()+1; i-- )
+            {
+                checkColor = raster.getPixel(x,i,checkColor);
+                if ( checkColor[0] == 0 && checkColor[1] == 0 && checkColor[2] == 0 )
+                    break;
+            }
+            if (xormode){
+                System.out.println(xormode);
+            if ( (clrbuff[0] == 255) && (clrbuff[1] == 255) && (clrbuff[2] == 255)) {
+                System.out.print("NOT GOTCHA");
+                span(e.getX(), e.getY(), Color.GREEN);
+            }
+            if ( clrbuff[0] == 0 && clrbuff[1] == 255 && clrbuff[2] == 0) {
+                System.out.print("Gotcha");
+                span(e.getX(), e.getY(), Color.WHITE);
+            }}
+            if (!xormode) {
+                span(e.getX(), e.getY(), Color.GREEN);
+            }
+            this.repaint();
+        }
+        catch(ArrayIndexOutOfBoundsException OOB)
+        {
+            return;
+        }
     }
 
     void myLine(int x1, int y1, int x2, int y2, WritableRaster raster )
@@ -136,40 +210,48 @@ public class DrawPanel extends JPanel implements MouseListener {
     public void paint(Graphics g )
     {
         super.paint(g);
-        int[] iArray = { 255, 255, 0, 0 }; // yellow
-
-        //img = (BufferedImage) createImage(800, 500 );
-
-
-        //drawHexagon(0, 7, raster);
-        //drawHexagon(28, 7, raster);
-        //System.out.print("A");
-        //drawHexagon(7*28 , 0*23 + 7, raster );
-        //myLine(8*28,23, 8*28, 7, raster );
-        /*myLine(0,7,0,23 ,raster);
-        myLine(0,23,14,30 ,raster);
-        myLine(14,30,28,23 ,raster);
-        myLine(28,23,28,7 ,raster);
-        myLine(14,0,28,7 ,raster);
-        myLine(0,7,14,0 ,raster);*/
-
-
-        //this.scrollRectToVisible(new Rectangle(0,0,img.getWidth(),img.getHeight()));
         g.drawImage(img, 0, 0, img.getWidth(), img.getHeight(), null );
     }
     void span(int x, int y, Color color )
     {
         int[] gotColor = null;
+        int[] basicColor = null;
         int[] blackColor = {0,0,0};
         int[] placeColor = {color.getRed(), color.getGreen(), color.getBlue(), 0};
-        int x1, x2;
+        int x1, y1;
         gotColor = raster.getPixel(x, y, gotColor) ;
+        basicColor = raster.getPixel(x, y, basicColor) ;
+        x1 = x; y1 = y;
         if ( blackColor[0] == gotColor[0] && blackColor[1] == gotColor[1] && blackColor[2] == gotColor[2] )
             return; // lets us ignore black borders
-
-        int[] borders = spanBorders(x,y);
-        fillSpan(borders[0], borders[1], y, color);
-        this.repaint();
+        while ( true )
+        {
+            if ( blackColor[0] == gotColor[0] && blackColor[1] == gotColor[1] && blackColor[2] == gotColor[2] )
+                break; // lets us ignore black borders
+            if ( gotColor[0] != basicColor[0] ||gotColor[1] != basicColor[1] ||gotColor[2] != basicColor[2] )
+                break; // paint only basic color
+            int[] borders = spanBorders(x,y);
+            if ( y != y1 )
+                fillSpan(borders[0], borders[1]+1, y, color);
+            x = (borders[1]+borders[0])/2;
+            y++;
+            gotColor = raster.getPixel(x, y, gotColor) ;
+        }
+        x = x1; y = y1;
+        gotColor = raster.getPixel(x, y, gotColor) ;
+        while ( true )
+        {
+            if ( blackColor[0] == gotColor[0] && blackColor[1] == gotColor[1] && blackColor[2] == gotColor[2] )
+                break; // lets us ignore black borders
+            if ( gotColor[0] != basicColor[0] ||gotColor[1] != basicColor[1] ||gotColor[2] != basicColor[2] )
+                break;
+            int[] borders = spanBorders(x,y);
+            fillSpan(borders[0], borders[1]+1, y, color);
+            x = (borders[1]+borders[0])/2;
+            y--;
+            gotColor = raster.getPixel(x, y, gotColor) ;
+        }
+        //this.repaint();
     }
     int[] spanBorders(int x, int y)
     {
@@ -187,7 +269,14 @@ public class DrawPanel extends JPanel implements MouseListener {
         }
         for ( int i = x-1; ; i-- )
         {
-            gotColor = raster.getPixel(i, y, gotColor) ;
+            try {
+                gotColor = raster.getPixel(i, y, gotColor);
+            }
+            catch (ArrayIndexOutOfBoundsException e)
+            {
+                System.out.println(e.toString() + i + " " + y);
+                break;
+            }
             if ( blackColor[0] == gotColor[0] && blackColor[1] == gotColor[1] && blackColor[2] == gotColor[2] )
             {
                 borders[0] = i+1;
@@ -203,5 +292,27 @@ public class DrawPanel extends JPanel implements MouseListener {
         {
             raster.setPixel(i, y, placeColor);
         }
+    }
+    void clearSockets()
+    {
+        int[] clrbuff = null;
+        for ( int i = 0; i < raster.getHeight(); i++ )
+        {
+            for ( int j = 0; j < raster.getWidth(); j++ )
+            {
+                try {
+                    clrbuff = raster.getPixel(j, i, clrbuff);
+                } catch(ArrayIndexOutOfBoundsException e )
+                {
+                    System.out.println("OOB: " + j + " " + i );
+                }
+                if ( (clrbuff[0] == 0 &&  clrbuff[1] == 0 &&  clrbuff[2] == 0) ||
+                        (clrbuff[0] == 255 && clrbuff[1] == 255 &&clrbuff[2] == 255 ))
+                {}
+                else
+                    raster.setPixel(j,i,new int[]{255,255,255});
+            }
+        }
+        repaint();
     }
 }
