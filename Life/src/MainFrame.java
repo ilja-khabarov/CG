@@ -21,7 +21,7 @@ public class MainFrame extends JFrame
         btn.setSize(20,20);
         JButton clearButton = new JButton("Clr");
         clearButton.setSize(20,20);
-        JButton xorButton = new JButton("X");
+        JButton xorButton = new JButton("R");
         xorButton.setSize(20,20);
 
         clearButton.addActionListener(new ActionListener() {

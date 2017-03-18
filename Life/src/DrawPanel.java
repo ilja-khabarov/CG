@@ -17,6 +17,7 @@ public class DrawPanel extends JPanel implements MouseListener {
     BufferedImage img;
     WritableRaster raster;
     boolean xormode;
+    int[] currHex = {8000000,8000000};
     public DrawPanel()
     {
         super(new BorderLayout());
@@ -42,7 +43,13 @@ public class DrawPanel extends JPanel implements MouseListener {
                 int[] clrbuff= null;
                 int[] checkColor = null;
                 int x = e.getX(); int y = e.getY();
+                //Integer[] currHex = {8000000,8000000}; // to provide large distance
                 try {
+                    if (  !hexChecker( x, y ))
+                    {
+                        super.mouseDragged(e);
+                        return;
+                    }
                     clrbuff = raster.getPixel(e.getX(), e.getY(), clrbuff);
                     {
                         for ( int i = y; i < raster.getHeight()+1; i++ )
@@ -80,6 +87,64 @@ public class DrawPanel extends JPanel implements MouseListener {
     {
         this.xormode = mode;
     }
+
+    boolean hexChecker( int x, int y)
+    { // returns true when we move to another hex
+        int i = 0;
+        int[] colorBuff = null;
+        int left, upper, right, lower,xcenter, ycenter, difference;
+        colorBuff = raster.getPixel(x,y,colorBuff);
+        if ( colorBuff[0] == 0 && colorBuff[1] == 0 && colorBuff[2] == 0 )
+            return false; // we think, it's the same hex
+        else
+        { // looking for the hex's center
+            for ( i = x; ; i++ )
+            {
+                colorBuff = raster.getPixel(i,y,colorBuff);
+                if ( colorBuff[0] == 0 && colorBuff[1] == 0 && colorBuff[2] == 0 ) {
+                    right = i;
+                    break;
+                }
+            }
+            for ( i = x; ; i-- )
+            {
+                colorBuff = raster.getPixel(i,y,colorBuff);
+                if ( colorBuff[0] == 0 && colorBuff[1] == 0 && colorBuff[2] == 0) {
+                    left = i;
+                    break;
+                }
+            }
+            for ( i = y; ; i-- )
+            {
+                colorBuff = raster.getPixel(x,i,colorBuff);
+                if ( colorBuff[0] == 0 && colorBuff[1] == 0 && colorBuff[2] == 0) {
+                    upper = i;
+                    break;
+                }
+            }
+            for ( i = y; ; i++ )
+            {
+                colorBuff = raster.getPixel(x,i,colorBuff);
+                if ( colorBuff[0] == 0 && colorBuff[1] == 0 && colorBuff[2] == 0) {
+                    lower = i;
+                    break;
+                }
+            }
+            xcenter = (left+right)/2;
+            ycenter = (lower+upper)/2; // got the center or current hexagon
+            if ( abs(xcenter - currHex[0]) > 7 || abs(ycenter - currHex[1]) > 7 )
+            {
+                System.out.print("Changed " + xcenter + " " +  currHex[0] );
+                System.out.println( " " + ycenter + " " +  currHex[1] );
+                currHex[0] = xcenter;
+                currHex[1] = ycenter;
+                return true;
+            }
+            else
+                return false;
+        }
+    }
+
     @Override
     public void mouseExited(MouseEvent e )
     {
@@ -125,11 +190,9 @@ public class DrawPanel extends JPanel implements MouseListener {
             if (xormode){
                 System.out.println(xormode);
             if ( (clrbuff[0] == 255) && (clrbuff[1] == 255) && (clrbuff[2] == 255)) {
-                System.out.print("NOT GOTCHA");
                 span(e.getX(), e.getY(), Color.GREEN);
             }
             if ( clrbuff[0] == 0 && clrbuff[1] == 255 && clrbuff[2] == 0) {
-                System.out.print("Gotcha");
                 span(e.getX(), e.getY(), Color.WHITE);
             }}
             if (!xormode) {

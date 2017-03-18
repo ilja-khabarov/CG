@@ -48,8 +48,6 @@ public class LifeModel
                         }
                     }
 
-
-
                 }
                 catch ( ArrayIndexOutOfBoundsException outOfBounds )
                 {}
