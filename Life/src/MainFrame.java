@@ -16,13 +16,49 @@ public class MainFrame extends JFrame
     {
         super();
         this.setSize(800,600);
+        this.setLocationRelativeTo(null);
 
         JButton btn = new JButton("Btn");
         btn.setSize(20,20);
+        JButton load = new JButton("Load");
+        JButton perform = new JButton("Perform");
+        JButton draw = new JButton("Draw");
         JButton clearButton = new JButton("Clr");
         clearButton.setSize(20,20);
         JButton xorButton = new JButton("R");
         xorButton.setSize(20,20);
+        JButton options = new JButton("Opts");
+
+        load.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                drawPanel.initModel();
+            }
+        });
+        perform.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                drawPanel.lifeModel.bypass();
+            }
+        });
+        draw.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                drawPanel.drawFieldFromModel();
+            }
+        });
+
+        options.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                JFrame optionsFrame = new JFrame("Options");
+                optionsFrame.setSize(450,300);
+                optionsFrame.setLayout(new FlowLayout(FlowLayout.LEADING));
+                optionsFrame.add(new ControlsPane() );
+                optionsFrame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+                optionsFrame.setVisible(true);
+            }
+        });
 
         clearButton.addActionListener(new ActionListener() {
             @Override
@@ -53,6 +89,10 @@ public class MainFrame extends JFrame
         toolBar.add(btn);
         toolBar.add(clearButton);
         toolBar.add(xorButton);
+        toolBar.add(options);
+        toolBar.add(load);
+        toolBar.add(perform);
+        toolBar.add(draw);
         menuBar.setVisible(true);
 
         JMenu menu = new JMenu("File");

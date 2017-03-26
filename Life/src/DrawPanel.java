@@ -9,6 +9,7 @@ import java.awt.image.BufferedImage;
 import java.awt.image.WritableRaster;
 
 import static java.lang.Math.abs;
+import static java.lang.Math.signum;
 
 /**
  * Created by ilja on 15.02.2017.
@@ -16,8 +17,17 @@ import static java.lang.Math.abs;
 public class DrawPanel extends JPanel implements MouseListener {
     BufferedImage img;
     WritableRaster raster;
+    double hexScale = 1.0;
+    int fieldWidth = 25;
+    int fieldHeigth = 20;
     boolean xormode;
+    int lineWidth = 1;
     int[] currHex = {8000000,8000000};
+    int vertical = (int) (16*hexScale);
+    int angle_h = (int)(7*hexScale);
+    int angle_w = (int)(14*hexScale);
+    LifeModel lifeModel;
+
     public DrawPanel()
     {
         super(new BorderLayout());
@@ -36,7 +46,10 @@ public class DrawPanel extends JPanel implements MouseListener {
                 raster.setPixel(j, i, basicColor ); // basically it's black. so let's bake it gray
             }
         }
-        drawField(25,20,raster );
+ //       myLine(0,0,100,300,raster);
+        drawField(fieldWidth,fieldHeigth,raster );
+        lifeModel = new LifeModel(fieldWidth,fieldHeigth);
+
         this.addMouseMotionListener(new MouseMotionAdapter() {
             @Override
             public void mouseDragged(MouseEvent e) {
@@ -65,7 +78,6 @@ public class DrawPanel extends JPanel implements MouseListener {
                                 break;
                         }
                         if (xormode) {
-                            System.out.println(xormode);
                             if (xormode && clrbuff[0] == 255 && clrbuff[1] == 255 && clrbuff[2] == 255)
                                 span(e.getX(), e.getY(), Color.GREEN);
                             if (xormode && clrbuff[0] == 0 && clrbuff[1] == 255 && clrbuff[2] == 0)
@@ -83,6 +95,59 @@ public class DrawPanel extends JPanel implements MouseListener {
             }
         });
     }
+    void initModel()
+    {
+        int[] redColor  = { 255, 0, 0, 0 };
+        int[] color = null;
+        for ( int i = 0; i < fieldHeigth; i++ )
+        {
+            for ( int j = 0 ; j < fieldWidth-(i%2); j++ )
+            {
+                try {
+                    //raster.setPixel(angle_w + (2*angle_w)*j + (i%2)*angle_w, angle_h + (vertical) + (vertical+angle_h)*i , redColor);
+                    color = raster.getPixel(angle_w + (2*angle_w)*j + (i%2)*angle_w, angle_h + (vertical) + (vertical+angle_h)*i , color );
+                    if ( color[0] == 0 && color[1] == 255 && color[2] == 0 ) // if hex is green
+                    {
+                        lifeModel.field[i][j] = 1;
+                    }
+                } catch (ArrayIndexOutOfBoundsException aob )
+                {
+                    aob.printStackTrace();
+                }
+            }
+        }
+        printModel();
+    }
+    void drawFieldFromModel()
+    {
+        for ( int i = 0; i < fieldHeigth; i++ )
+        {
+            for (int j = 0; j < fieldWidth - (i % 2); j++)
+            {
+                if ( lifeModel.field[i][j] == 1 )
+                {
+                    span(angle_w + (2*angle_w)*j + (i%2)*angle_w, angle_h + (vertical) + (vertical+angle_h)*i, Color.GREEN );
+                }
+                else
+                {
+                    span(angle_w + (2*angle_w)*j + (i%2)*angle_w, angle_h + (vertical) + (vertical+angle_h)*i, Color.WHITE );
+                }
+            }
+        }
+        this.repaint();
+    }
+    void printModel()
+    {
+        for ( int i = 0; i < fieldHeigth; i++ )
+        {
+            for (int j = 0; j < fieldWidth - (i % 2); j++)
+            {
+                System.out.print(lifeModel.field[i][j]);
+            }
+            System.out.println();
+        }
+    }
+
     void setXormode(boolean mode)
     {
         this.xormode = mode;
@@ -134,8 +199,8 @@ public class DrawPanel extends JPanel implements MouseListener {
             ycenter = (lower+upper)/2; // got the center or current hexagon
             if ( abs(xcenter - currHex[0]) > 7 || abs(ycenter - currHex[1]) > 7 )
             {
-                System.out.print("Changed " + xcenter + " " +  currHex[0] );
-                System.out.println( " " + ycenter + " " +  currHex[1] );
+                //System.out.print("Changed " + xcenter + " " +  currHex[0] );
+                //System.out.println( " " + ycenter + " " +  currHex[1] );
                 currHex[0] = xcenter;
                 currHex[1] = ycenter;
                 return true;
@@ -208,10 +273,91 @@ public class DrawPanel extends JPanel implements MouseListener {
 
     void myLine(int x1, int y1, int x2, int y2, WritableRaster raster )
     { // this func realizes Bresenham's algorhytm
-        int shift = 0;
+        if ( lineWidth > 1 )
+        {
+            Graphics g = img.getGraphics();
+            Graphics2D graphics2D = (Graphics2D) g;
+            BasicStroke stroke = new BasicStroke(lineWidth);
+            graphics2D.setColor(Color.BLACK);
+            graphics2D.setStroke(stroke);
+            graphics2D.drawLine(x1,y1,x2,y2);
+
+            return;
+        }
+
+        int x, y, dx, dy, incx, incy, pdx, pdy, es, el, err;
         int[] blackColor  = { 0, 0, 0, 0 };
 
-        int deltax = abs(x2-x1);
+        dx = x2 - x1;//проекция на ось икс
+        dy = y2 - y1;//проекция на ось игрек
+
+        incx = (int)Math.signum(dx);
+	/*
+	 * Определяем, в какую сторону нужно будет сдвигаться. Если dx < 0, т.е. отрезок идёт
+	 * справа налево по иксу, то incx будет равен -1.
+	 * Это будет использоваться в цикле постороения.
+	 */
+        incy = (int)Math.signum(dy);
+	/*
+	 * Аналогично. Если рисуем отрезок снизу вверх -
+	 * это будет отрицательный сдвиг для y (иначе - положительный).
+	 */
+
+        if (dx < 0) dx = -dx;//далее мы будем сравнивать: "if (dx < dy)"
+        if (dy < 0) dy = -dy;//поэтому необходимо сделать dx = |dx|; dy = |dy|
+        //эти две строчки можно записать и так: dx = Math.abs(dx); dy = Math.abs(dy);
+
+        if (dx > dy)
+        //определяем наклон отрезка:
+        {
+	 /*
+	  * Если dx > dy, то значит отрезок "вытянут" вдоль оси икс, т.е. он скорее длинный, чем высокий.
+	  * Значит в цикле нужно будет идти по икс (строчка el = dx;), значит "протягивать" прямую по иксу
+	  * надо в соответствии с тем, слева направо и справа налево она идёт (pdx = incx;), при этом
+	  * по y сдвиг такой отсутствует.
+	  */
+            pdx = incx;	pdy = 0;
+            es = dy;	el = dx;
+        }
+        else//случай, когда прямая скорее "высокая", чем длинная, т.е. вытянута по оси y
+        {
+            pdx = 0;	pdy = incy;
+            es = dx;	el = dy;//тогда в цикле будем двигаться по y
+        }
+
+        x = x1;
+        y = y1;
+        err = el/2;
+        raster.setPixel(x,y,blackColor);
+        //все последующие точки возможно надо сдвигать, поэтому первую ставим вне цикла
+
+        for (int t = 0; t < el; t++)//идём по всем точкам, начиная со второй и до последней
+        {
+            err -= es;
+            if (err < 0)
+            {
+                err += el;
+                x += incx;//сдвинуть прямую (сместить вверх или вниз, если цикл проходит по иксам)
+                y += incy;//или сместить влево-вправо, если цикл проходит по y
+            }
+            else
+            {
+                x += pdx;//продолжить тянуть прямую дальше, т.е. сдвинуть влево или вправо, если
+                y += pdy;//цикл идёт по иксу; сдвинуть вверх или вниз, если по y
+            }
+
+            raster.setPixel(x,y,blackColor);
+        }
+
+        /*
+        int maxlen;
+        int[] blackColor  = { 0, 0, 0, 0 };
+
+
+        int deltax = (x2-x1);
+        int signx = (int) Math.signum(deltax);
+        int deltay = (y2-y1);
+        int signy = (int) Math.signum(deltay);
 
         if (deltax == 0)
         {
@@ -226,34 +372,29 @@ public class DrawPanel extends JPanel implements MouseListener {
             }
             return;
         }
+        if ( signx*deltax > signy*deltay )
+        {
+            maxlen = deltax;
+        }
 
-        int deltay = abs(y2-y1);
         int error = 0;
         int deltaerr = deltay;
         int y = y1;
-        for ( int i = x1; i < x2; i++ )
+        for ( int i = 0; i < maxlen; i++ )
         {
             raster.setPixel(i, y, blackColor);
-            error = error+deltaerr;
-            if ( 2*error >= deltax )
-            {
-                if ( y2 - y1 > 0 )
-                    y = y+1;
-                else
-                    y = y - 1;
-                error = error - deltax;
-            }
         }
+        */
     }
 
     public void drawHexagon(int x, int y, WritableRaster raster )
     {
-        myLine(x ,y ,x+14 ,y-7 ,raster);
-        myLine(x+14 ,y-7 ,x+28 ,y ,raster);
-        myLine( x+28,y ,x+28 ,y+16 ,raster);
-        myLine( x,y ,x ,y+16 ,raster);
-        myLine( x,y+16 ,x+14 ,y+23 ,raster);
-        myLine( x+14, y+23,x+28 ,y+16 ,raster);
+        myLine(x ,y ,x+angle_w ,y-angle_h ,raster);
+        myLine(x+angle_w,y-angle_h ,x+2*angle_w ,y ,raster);
+        myLine( x+2*angle_w,y ,x+2*angle_w ,y+vertical ,raster);
+        myLine( x,y ,x ,y+vertical ,raster);
+        myLine( x,y+vertical ,x+angle_w ,y+vertical+angle_h ,raster);
+        myLine( x+angle_w, y+vertical+angle_h,x+2*angle_w ,y+vertical ,raster);
     }
     public void drawField( int width, int height, WritableRaster raster )
     {
@@ -264,7 +405,7 @@ public class DrawPanel extends JPanel implements MouseListener {
 
             for ( int j = 0; j < width - even_oddShift; j++ )
             {
-                drawHexagon(j*28 + even_oddShift*(14), i*23 + 7, raster );
+                drawHexagon(j*2*angle_w + even_oddShift*(angle_w), i*(angle_h+vertical) + vertical, raster );
             }
         }
     }
@@ -291,7 +432,7 @@ public class DrawPanel extends JPanel implements MouseListener {
         {
             if ( blackColor[0] == gotColor[0] && blackColor[1] == gotColor[1] && blackColor[2] == gotColor[2] )
                 break; // lets us ignore black borders
-            if ( gotColor[0] != basicColor[0] ||gotColor[1] != basicColor[1] ||gotColor[2] != basicColor[2] )
+            if ( gotColor[0] != basicColor[0] || gotColor[1] != basicColor[1] ||gotColor[2] != basicColor[2] )
                 break; // paint only basic color
             int[] borders = spanBorders(x,y);
             if ( y != y1 )
@@ -358,6 +499,7 @@ public class DrawPanel extends JPanel implements MouseListener {
     }
     void clearSockets()
     {
+        lifeModel.clear();
         int[] clrbuff = null;
         for ( int i = 0; i < raster.getHeight(); i++ )
         {

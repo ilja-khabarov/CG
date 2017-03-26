@@ -3,10 +3,10 @@
  */
 public class LifeModel
 {
-    byte[][] field;
+    public byte[][] field;
     int height, width;
-    double FST_IMPACT, SND_IMPACT;
-    double BIRTH_BEGIN, BIRTH_END, LIFE_BEGIN, LIFE_END;
+    double FST_IMPACT = 1.0, SND_IMPACT = 0.3;
+    double BIRTH_BEGIN = 2.3, BIRTH_END = 2.9, LIFE_BEGIN = 1.8, LIFE_END = 3.5;
 
     LifeModel(int width_in, int height_in)
     {
@@ -18,40 +18,85 @@ public class LifeModel
     {
         this(30,20);
     }
+    void clear()
+    {
+        field = new byte[height][width];
+    }
     void bypass()
     {
         double metric = 0.0;
+        double metric_scnd = 0.0;
         int shift = 0;
         byte[][] copy = field.clone();
-        for (int i = 0; i < height; i++) // looking without the borders
-         {
+        for (int i = 0; i < height; i++)
+        {
              for (int j = 0; j < width; j++)
              {
+                 metric = 0.0;
+                 metric_scnd = 0.0;
                 try {
                     if ( i % 2 == 0 )
                         shift = 0;
                     else
                         shift = 1;
 
-                    metric += FST_IMPACT*(field[i][j-1] + field[i][j+1] + field[i-1][j-1+shift] + field[i-1][j+shift] + field[i+1][j-1+shift] + field[i+1][j+shift] );
-                    metric += SND_IMPACT*(field[i-2][j] + field[i-1][j-2+shift] + field[i-1][j+1+shift] + field[i+1][j-2+shift] + field[i+1][j+1+shift] + field[i+2][j]);
+                    if ( j-1 >= 0 )
+                        metric += field[i][j-1];
+                    if ( j+1 < width )
+                        metric += field[i][j+1];
+                    if ( i-1 >= 0 ) {
+                        if ( j - 1 + shift >= 0 )
+                            metric += field[i - 1][j - 1 + shift];
+                        if ( j + shift < width )
+                            metric += field[i - 1][j + shift];
+                    }
+                    if ( i + 1 < height )
+                    {
+
+                        if ( j - 1 + shift >= 0 )
+                            metric += field[i + 1][j - 1 + shift];
+                        if ( j + shift < width )
+                            metric += field[i + 1][j + shift];
+                    }
+                    metric *= FST_IMPACT;
+                    if ( i - 2 >= 0 )
+                        metric_scnd += field[i-2][j] ;
+                    if ( j - 2 + shift >= 0 )
+                    {
+                        if ( i - 1 >= 0 )
+                            metric_scnd += field[i - 1][j - 2 + shift];
+                        if ( i + 1 < height )
+                            metric_scnd += field[i + 1][j - 2 + shift];
+                    }
+                    if ( j + 1 + shift < width )
+                    {
+                        if ( i - 1 >= 0 )
+                            metric_scnd += field[i - 1][j + 1 + shift];
+                        if ( i + 1 < height )
+                            metric_scnd += field[i + 1][j + 1 + shift];
+                    }
+                    if ( i + 2 < height )
+                        metric_scnd += field[i+2][j];
+                    metric += SND_IMPACT*metric_scnd;
+
                     if ( metric <= LIFE_BEGIN || metric >= LIFE_END )
                     {
                         copy[i][j] = 0;
                         continue;
                     }
-                    if ( field[i][j] == 0 )
-                    {
-                        if ( metric >= BIRTH_BEGIN && metric <= BIRTH_END )
-                        {
-                            field[i][j] = 1;
+                    if ( field[i][j] == 0 ) {
+                        if (metric >= BIRTH_BEGIN && metric <= BIRTH_END) {
+                            copy[i][j] = 1;
                         }
                     }
-
                 }
                 catch ( ArrayIndexOutOfBoundsException outOfBounds )
-                {}
+                {
+                    System.out.println("Mistake_bypass_outofbounds");
+                }
              }
          }
+         field = copy;
+
     }
 }
