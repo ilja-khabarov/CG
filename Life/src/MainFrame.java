@@ -2,6 +2,7 @@ import javax.swing.*;
 import java.awt.*;
 import java.awt.event.*;
 import java.awt.image.BufferedImage;
+import java.net.URL;
 
 /**
  * Created by ilja on 15.02.2017.
@@ -18,41 +19,53 @@ public class MainFrame extends JFrame
         this.setSize(800,600);
         this.setLocationRelativeTo(null);
 
-        JButton btn = new JButton("Btn");
-        btn.setSize(20,20);
-        JButton load = new JButton("Load");
-        JButton perform = new JButton("Perform");
-        JButton draw = new JButton("Draw");
-        JButton clearButton = new JButton("Clr");
-        clearButton.setSize(20,20);
+        JButton clearButton = new JButton();
+        JButton next = new JButton(("Next"));
         JButton xorButton = new JButton("R");
-        xorButton.setSize(20,20);
         JButton options = new JButton("Opts");
+        JButton start = new JButton("Start");
+        start.setToolTipText("Start game!");
+        JButton stop = new JButton("Stop");
 
-        load.addActionListener(new ActionListener() {
+        ImageIcon startIcon = new ImageIcon("resources/play.png");
+        start.setIcon(startIcon);
+        ImageIcon nextIcon = new ImageIcon("resources/next.png");
+        next.setIcon(nextIcon);
+        ImageIcon clearIcon = new ImageIcon("resources/clear.png");
+        clearButton.setIcon(clearIcon);
+        ImageIcon settingsIcon = new ImageIcon("resources/gear.png");
+        options.setIcon(settingsIcon);
+        ImageIcon xorIcon = new ImageIcon("resources/replace.png");
+        xorButton.setIcon(xorIcon);
+        ImageIcon stopIcon = new ImageIcon("resources/stop.png");
+        stop.setIcon(stopIcon);
+        start.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                drawPanel.start();
+            }
+        });
+        stop.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                drawPanel.stop();
+            }
+        });
+
+        next.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
                 drawPanel.initModel();
-            }
-        });
-        perform.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
                 drawPanel.lifeModel.bypass();
-            }
-        });
-        draw.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
                 drawPanel.drawFieldFromModel();
             }
         });
-
         options.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
                 JFrame optionsFrame = new JFrame("Options");
-                optionsFrame.setSize(450,300);
+                optionsFrame.setSize(450,500);
+                optionsFrame.setLocationRelativeTo(null);
                 optionsFrame.setLayout(new FlowLayout(FlowLayout.LEADING));
                 optionsFrame.add(new ControlsPane() );
                 optionsFrame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
@@ -86,13 +99,12 @@ public class MainFrame extends JFrame
         });
         menuBar = new JMenuBar();
         toolBar = new JToolBar("MaiNToolbar");
-        toolBar.add(btn);
         toolBar.add(clearButton);
         toolBar.add(xorButton);
         toolBar.add(options);
-        toolBar.add(load);
-        toolBar.add(perform);
-        toolBar.add(draw);
+        toolBar.add(next);
+        toolBar.add(start);
+        toolBar.add(stop);
         menuBar.setVisible(true);
 
         JMenu menu = new JMenu("File");

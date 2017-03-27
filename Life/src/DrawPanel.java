@@ -2,9 +2,7 @@ import org.w3c.dom.css.RGBColor;
 
 import javax.swing.*;
 import java.awt.*;
-import java.awt.event.MouseEvent;
-import java.awt.event.MouseListener;
-import java.awt.event.MouseMotionAdapter;
+import java.awt.event.*;
 import java.awt.image.BufferedImage;
 import java.awt.image.WritableRaster;
 
@@ -26,6 +24,7 @@ public class DrawPanel extends JPanel implements MouseListener {
     int vertical = (int) (16*hexScale);
     int angle_h = (int)(7*hexScale);
     int angle_w = (int)(14*hexScale);
+    Timer timer;
     LifeModel lifeModel;
 
     public DrawPanel()
@@ -39,6 +38,8 @@ public class DrawPanel extends JPanel implements MouseListener {
         raster = img.getRaster();
         addMouseListener(this);
         int[] basicColor = { 255, 255, 255, 0 }; //
+
+        initTimer();
         for ( int i = 0; i < img.getHeight(); i++ )
         {
             for ( int j = 0; j < img.getWidth(); j++ )
@@ -95,6 +96,25 @@ public class DrawPanel extends JPanel implements MouseListener {
             }
         });
     }
+    void initTimer()
+    {
+        timer = new Timer(1000, new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                initModel();
+                lifeModel.bypass();
+                drawFieldFromModel();
+            }
+        });
+    }
+    void start()
+    {
+        timer.start();
+    }
+    void stop()
+    {
+        timer.stop();
+    }
     void initModel()
     {
         int[] redColor  = { 255, 0, 0, 0 };
@@ -116,7 +136,6 @@ public class DrawPanel extends JPanel implements MouseListener {
                 }
             }
         }
-        printModel();
     }
     void drawFieldFromModel()
     {
@@ -152,7 +171,10 @@ public class DrawPanel extends JPanel implements MouseListener {
     {
         this.xormode = mode;
     }
-
+    void setLineWidth(int width)
+    {
+        this.lineWidth = width;
+    }
     boolean hexChecker( int x, int y)
     { // returns true when we move to another hex
         int i = 0;
