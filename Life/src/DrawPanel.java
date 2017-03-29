@@ -5,6 +5,7 @@ import java.awt.*;
 import java.awt.event.*;
 import java.awt.image.BufferedImage;
 import java.awt.image.WritableRaster;
+import java.io.*;
 
 import static java.lang.Math.abs;
 import static java.lang.Math.signum;
@@ -26,6 +27,9 @@ public class DrawPanel extends JPanel implements MouseListener {
     int angle_w = (int)(14*hexScale);
     Timer timer;
     LifeModel lifeModel;
+    boolean isFieldActive = true;
+    int[] basicColor = { 255, 255, 255, 0 }; //
+    boolean impactMode = false;
 
     public DrawPanel()
     {
@@ -33,11 +37,10 @@ public class DrawPanel extends JPanel implements MouseListener {
         xormode = false;
         //this.setAutoscrolls(true);
         this.setOpaque(true);
-        img = new BufferedImage( 800,500, BufferedImage.TYPE_3BYTE_BGR );
+        img = new BufferedImage( (int)(28*fieldWidth*hexScale)+1,(int)(23*(fieldHeigth+1)*hexScale), BufferedImage.TYPE_3BYTE_BGR );
         this.setPreferredSize(new Dimension(img.getWidth(), img.getHeight()));
         raster = img.getRaster();
         addMouseListener(this);
-        int[] basicColor = { 255, 255, 255, 0 }; //
 
         initTimer();
         for ( int i = 0; i < img.getHeight(); i++ )
@@ -51,69 +54,103 @@ public class DrawPanel extends JPanel implements MouseListener {
         drawField(fieldWidth,fieldHeigth,raster );
         lifeModel = new LifeModel(fieldWidth,fieldHeigth);
 
+        Graphics2D g2 = (Graphics2D)img.getGraphics();
+        g2.setColor(Color.BLACK);
+        //g2.drawString("2.0", angle_h+ 5*2*angle_w + (2%2)*(angle_w),angle_h+vertical/2 + 5 + 2*(angle_h+vertical) );
+        //drawHexagon(1*2*angle_w + 1*(angle_w), 1*(angle_h+vertical) + angle_h, raster );
+        this.repaint();
+
         this.addMouseMotionListener(new MouseMotionAdapter() {
             @Override
             public void mouseDragged(MouseEvent e) {
-                int[] clrbuff= null;
-                int[] checkColor = null;
-                int x = e.getX(); int y = e.getY();
-                //Integer[] currHex = {8000000,8000000}; // to provide large distance
-                try {
-                    if (  !hexChecker( x, y ))
-                    {
-                        super.mouseDragged(e);
+                if (isActive()) {
+                    int[] clrbuff = null;
+                    int[] checkColor = null;
+                    int x = e.getX();
+                    int y = e.getY();
+                    //Integer[] currHex = {8000000,8000000}; // to provide large distance
+                    try {
+                        if (!hexChecker(x, y)) {
+                            super.mouseDragged(e);
+                            return;
+                        }
+                        clrbuff = raster.getPixel(e.getX(), e.getY(), clrbuff);
+                        {
+                            for (int i = y; i < raster.getHeight() + 1; i++) {
+                                checkColor = raster.getPixel(x, i, checkColor);
+                                if (checkColor[0] == 0 && checkColor[1] == 0 && checkColor[2] == 0)
+                                    break;
+                            }
+                            for (int i = y; i < raster.getHeight() + 1; i--) {
+                                checkColor = raster.getPixel(x, i, checkColor);
+                                if (checkColor[0] == 0 && checkColor[1] == 0 && checkColor[2] == 0)
+                                    break;
+                            }
+                            if (xormode) {
+                                if (xormode && clrbuff[0] == 255 && clrbuff[1] == 255 && clrbuff[2] == 255)
+                                    span(e.getX(), e.getY(), Color.GREEN);
+                                if (xormode && clrbuff[0] == 0 && clrbuff[1] == 255 && clrbuff[2] == 0)
+                                    span(e.getX(), e.getY(), Color.WHITE);
+                            }
+                            if (!xormode)
+                                span(e.getX(), e.getY(), Color.GREEN);
+                        }
+                    } catch (ArrayIndexOutOfBoundsException oob) {
+                        //oob.printStackTrace();
                         return;
                     }
-                    clrbuff = raster.getPixel(e.getX(), e.getY(), clrbuff);
-                    {
-                        for ( int i = y; i < raster.getHeight()+1; i++ )
-                        {
-                            checkColor = raster.getPixel(x,i,checkColor);
-                            if ( checkColor[0] == 0 && checkColor[1] == 0 && checkColor[2] == 0 )
-                                break;
-                        }
-                        for ( int i = y; i < raster.getHeight()+1; i-- )
-                        {
-                            checkColor = raster.getPixel(x,i,checkColor);
-                            if ( checkColor[0] == 0 && checkColor[1] == 0 && checkColor[2] == 0 )
-                                break;
-                        }
-                        if (xormode) {
-                            if (xormode && clrbuff[0] == 255 && clrbuff[1] == 255 && clrbuff[2] == 255)
-                                span(e.getX(), e.getY(), Color.GREEN);
-                            if (xormode && clrbuff[0] == 0 && clrbuff[1] == 255 && clrbuff[2] == 0)
-                                span(e.getX(), e.getY(), Color.WHITE);
-                        }
-                        if ( !xormode )
-                            span(e.getX(), e.getY(), Color.GREEN);
-                    }
-                } catch(ArrayIndexOutOfBoundsException oob ) {
-                    return;
-                }
-                repaint();
+                    repaint();
 
-                super.mouseDragged(e);
+                    super.mouseDragged(e);
+                }
             }
         });
     }
+    void nullifyImage()
+    {
+        for ( int i = 0; i < img.getHeight(); i++ )
+        {
+            for ( int j = 0; j < img.getWidth(); j++ )
+            {
+                raster.setPixel(j, i, basicColor ); // basically it's black. so let's bake it gray
+            }
+        }
+    }
+
     void initTimer()
     {
         timer = new Timer(1000, new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                initModel();
+                /*initModel();
                 lifeModel.bypass();
+                drawFieldFromModel();*/
+                if ( !lifeModel.isInitiated() )
+                    initModel();
+                lifeModel.bypass();
+                if ( impactMode ) {
+                    nullifyImage();
+                    drawFieldFromModel();
+                    metricPrinter();
+                }
                 drawFieldFromModel();
             }
         });
     }
+    void metricPrinter()
+    {
+        lifeModel.metricPrinter((Graphics2D)(img.getGraphics()), angle_h, angle_w, vertical );
+        this.repaint();
+    }
     void start()
     {
         timer.start();
+        this.setInactive();
     }
     void stop()
     {
         timer.stop();
+        this.setActive();
     }
     void initModel()
     {
@@ -137,8 +174,21 @@ public class DrawPanel extends JPanel implements MouseListener {
             }
         }
     }
+    boolean isActive()
+    {
+        return isFieldActive;
+    }
+    void setActive()
+    {
+        isFieldActive = true;
+    }
+    void setInactive()
+    {
+        isFieldActive = false;
+    }
     void drawFieldFromModel()
     {
+        drawField(fieldWidth, fieldHeigth, raster);
         for ( int i = 0; i < fieldHeigth; i++ )
         {
             for (int j = 0; j < fieldWidth - (i % 2); j++)
@@ -255,41 +305,40 @@ public class DrawPanel extends JPanel implements MouseListener {
     public void mouseClicked(MouseEvent e )
     {
         //System.out.println("Clicked: " + e.getX() + " " + e.getY() );
-        int x = e.getX(); int y = e.getY();
+        if ( isActive() ) {
+            int x = e.getX();
+            int y = e.getY();
 
-        int[] clrbuff= null;
-        int[] checkColor = null;
-        clrbuff = raster.getPixel(e.getX(), e.getY(), clrbuff);
-        try
-        {
-            for ( int i = y; i < raster.getHeight()+1; i++ )
-            {
-                checkColor = raster.getPixel(x,i,checkColor);
-                if ( checkColor[0] == 0 && checkColor[1] == 0 && checkColor[2] == 0 )
-                    break;
+            int[] clrbuff = null;
+            int[] checkColor = null;
+            clrbuff = raster.getPixel(e.getX(), e.getY(), clrbuff);
+            try {
+                for (int i = y; i < raster.getHeight() + 1; i++) {
+                    checkColor = raster.getPixel(x, i, checkColor);
+                    if (checkColor[0] == 0 && checkColor[1] == 0 && checkColor[2] == 0)
+                        break;
+                }
+                for (int i = y; i < raster.getHeight() + 1; i--) {
+                    checkColor = raster.getPixel(x, i, checkColor);
+                    if (checkColor[0] == 0 && checkColor[1] == 0 && checkColor[2] == 0)
+                        break;
+                }
+                if (xormode) {
+                    System.out.println(xormode);
+                    if ((clrbuff[0] == 255) && (clrbuff[1] == 255) && (clrbuff[2] == 255)) {
+                        span(e.getX(), e.getY(), Color.GREEN);
+                    }
+                    if (clrbuff[0] == 0 && clrbuff[1] == 255 && clrbuff[2] == 0) {
+                        span(e.getX(), e.getY(), Color.WHITE);
+                    }
+                }
+                if (!xormode) {
+                    span(e.getX(), e.getY(), Color.GREEN);
+                }
+                this.repaint();
+            } catch (ArrayIndexOutOfBoundsException OOB) {
+                return;
             }
-            for ( int i = y; i < raster.getHeight()+1; i-- )
-            {
-                checkColor = raster.getPixel(x,i,checkColor);
-                if ( checkColor[0] == 0 && checkColor[1] == 0 && checkColor[2] == 0 )
-                    break;
-            }
-            if (xormode){
-                System.out.println(xormode);
-            if ( (clrbuff[0] == 255) && (clrbuff[1] == 255) && (clrbuff[2] == 255)) {
-                span(e.getX(), e.getY(), Color.GREEN);
-            }
-            if ( clrbuff[0] == 0 && clrbuff[1] == 255 && clrbuff[2] == 0) {
-                span(e.getX(), e.getY(), Color.WHITE);
-            }}
-            if (!xormode) {
-                span(e.getX(), e.getY(), Color.GREEN);
-            }
-            this.repaint();
-        }
-        catch(ArrayIndexOutOfBoundsException OOB)
-        {
-            return;
         }
     }
 
@@ -310,8 +359,8 @@ public class DrawPanel extends JPanel implements MouseListener {
         int x, y, dx, dy, incx, incy, pdx, pdy, es, el, err;
         int[] blackColor  = { 0, 0, 0, 0 };
 
-        dx = x2 - x1;//проекция на ось икс
-        dy = y2 - y1;//проекция на ось игрек
+        dx = x2 - x1;//проекция на ось x
+        dy = y2 - y1;//проекция на ось y
 
         incx = (int)Math.signum(dx);
 	/*
@@ -338,13 +387,19 @@ public class DrawPanel extends JPanel implements MouseListener {
 	  * надо в соответствии с тем, слева направо и справа налево она идёт (pdx = incx;), при этом
 	  * по y сдвиг такой отсутствует.
 	  */
-            pdx = incx;	pdy = 0;
-            es = dy;	el = dx;
+            pdx = incx;
+            pdy = 0;
+
+            es = dy;
+            el = dx;
         }
         else//случай, когда прямая скорее "высокая", чем длинная, т.е. вытянута по оси y
         {
-            pdx = 0;	pdy = incy;
-            es = dx;	el = dy;//тогда в цикле будем двигаться по y
+            pdx = 0;
+            pdy = incy;
+
+            es = dx;
+            el = dy;//тогда в цикле будем двигаться по y
         }
 
         x = x1;
@@ -368,7 +423,14 @@ public class DrawPanel extends JPanel implements MouseListener {
                 y += pdy;//цикл идёт по иксу; сдвинуть вверх или вниз, если по y
             }
 
-            raster.setPixel(x,y,blackColor);
+            try {
+                raster.setPixel(x, y, blackColor);
+            }
+            catch ( ArrayIndexOutOfBoundsException iob )
+            {
+                System.out.println("Exception: " + x + " " + y );
+                iob.printStackTrace();
+            }
         }
 
         /*
@@ -427,7 +489,7 @@ public class DrawPanel extends JPanel implements MouseListener {
 
             for ( int j = 0; j < width - even_oddShift; j++ )
             {
-                drawHexagon(j*2*angle_w + even_oddShift*(angle_w), i*(angle_h+vertical) + vertical, raster );
+                drawHexagon(j*2*angle_w + even_oddShift*(angle_w), i*(angle_h+vertical) + angle_h, raster );
             }
         }
     }
@@ -542,4 +604,82 @@ public class DrawPanel extends JPanel implements MouseListener {
         }
         repaint();
     }
+    void initModelFromFile (File in )
+    {
+        try {
+            int coloredAmount;
+            FileReader fr = new FileReader(in);
+            BufferedReader br = new BufferedReader(fr);
+            StringBuilder sb = new StringBuilder();
+            String line = br.readLine();
+            String sizes[];
+
+            sizes = line.split(" ");
+            fieldWidth = Integer.parseInt(sizes[0]);
+            fieldHeigth = Integer.parseInt(sizes[1]);
+            line = br.readLine();
+            this.lineWidth = Integer.parseInt(line);
+            line = br.readLine();
+            this.hexScale = Integer.parseInt(line) / 10.0;
+
+            img = new BufferedImage( (int)(28*fieldWidth*hexScale)+1,(int)(23*(fieldHeigth+1)*hexScale), BufferedImage.TYPE_3BYTE_BGR );
+            raster = img.getRaster();
+            for ( int i = 0; i < img.getHeight(); i++ )
+            {
+                for ( int j = 0; j < img.getWidth(); j++ )
+                {
+                    raster.setPixel(j, i, basicColor ); // basically it's black. so let's bake it gray
+                }
+            }
+            this.setPreferredSize(new Dimension(img.getWidth(), img.getHeight()));
+
+            drawField(fieldWidth,fieldHeigth,raster );
+            lifeModel = new LifeModel(fieldWidth,fieldHeigth);
+
+            line = br.readLine();
+            coloredAmount = Integer.parseInt(line);
+
+            lifeModel.initModelFromFile( br, coloredAmount  );
+            drawFieldFromModel();
+
+        }
+        catch ( FileNotFoundException fnf )
+        {
+            fnf.printStackTrace();
+        }
+        catch ( IOException ioe )
+        {
+            System.out.println("ioex");
+            ioe.printStackTrace();
+        }
+    }
+    void setSizesAccordigToScale()
+    {
+        angle_h = (int)Math.round(7*hexScale);
+        angle_w = (int)Math.round(14*hexScale);
+        vertical = (int)Math.round(16*hexScale);
+    }
+    void saveStateInFile( File file )
+    {
+        try {
+            FileWriter writer = new FileWriter(file);
+            String buffer;
+
+            buffer = fieldWidth + " " + fieldHeigth + System.lineSeparator();
+            writer.append(buffer);
+            buffer = lineWidth + System.lineSeparator();
+            writer.append(buffer);
+            buffer = (int)Math.round(hexScale*10)+System.lineSeparator();
+            writer.append(buffer);
+            if ( !lifeModel.isInitiated())
+                initModel();
+            lifeModel.appendFieldToWriter(writer);
+            writer.flush();
+
+        } catch (IOException ioe)
+        {
+            ioe.printStackTrace();
+        }
+    }
+
 }
