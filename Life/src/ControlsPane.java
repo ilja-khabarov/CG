@@ -25,7 +25,8 @@ public class ControlsPane extends JPanel implements ChangeListener {
     JPanel radioPane;
     JRadioButton xor;
     JRadioButton replace;
-    ControlsPane(DrawPanel dp )
+    JButton xorButton;
+    ControlsPane(DrawPanel dp, JButton xorButtonIn )
     {
         //setLayout(new BoxLayout(this, BoxLayout.PAGE_AXIS));
         setLayout(new BoxLayout(this, BoxLayout.Y_AXIS));
@@ -34,11 +35,12 @@ public class ControlsPane extends JPanel implements ChangeListener {
         hexSize = new SettingsElementPane("Hex size", 50, 6, (int)Math.round(drawPanel.hexScale*10));
         rowsAmount = new SettingsElementPane("Rows", 101,1,drawPanel.fieldHeigth);
         columnsAmount= new SettingsElementPane("Columns", 101,1,drawPanel.fieldWidth);
+        xorButton = xorButtonIn;
+
         JButton ok = new JButton("OK");
         initRadioPane();
         initOkListener();
         ok.addActionListener(okListener);
-
 
 
         this.add(columnsAmount);
@@ -55,6 +57,14 @@ public class ControlsPane extends JPanel implements ChangeListener {
         radioPane.setLayout(new GridLayout(1,2));
         replace = new JRadioButton("Replace");
         xor = new JRadioButton("Xor");
+        if ( drawPanel.xormode )
+        {
+            xor.setSelected(true);
+        }
+        else
+        {
+            replace.setSelected(true);
+        }
         radioPane.add(replace);
         radioPane.add(xor);
 
@@ -62,16 +72,22 @@ public class ControlsPane extends JPanel implements ChangeListener {
         replace.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                xor.setSelected(false);
+                if ( replace.isSelected() ) {
+                    xor.setSelected(false);
+                }
             }
         });
         xor.addActionListener(new ActionListener() {
             @Override
-            public void actionPerformed(ActionEvent e) {
-                replace.setSelected(false);
+            public void actionPerformed(ActionEvent e)
+            {
+                if ( xor.isSelected() ) {
+                    replace.setSelected(false);
+                }
             }
         });
     }
+
     void initOkListener()
     {
         okListener = new ActionListener() {
@@ -92,6 +108,10 @@ public class ControlsPane extends JPanel implements ChangeListener {
                 drawPanel.setPreferredSize(new Dimension(drawPanel.img.getWidth(), drawPanel.img.getHeight()));
                 drawPanel.setSizesAccordigToScale();
 
+                if ( xor.isSelected() )
+                    xorButton.setText("X");
+                else
+                    xorButton.setText("R");
 
                 drawPanel.drawField(drawPanel.fieldWidth, drawPanel.fieldHeigth, drawPanel.raster );
                 drawPanel.lifeModel = new LifeModel(drawPanel.fieldWidth, drawPanel.fieldHeigth);

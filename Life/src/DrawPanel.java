@@ -6,6 +6,7 @@ import java.awt.event.*;
 import java.awt.image.BufferedImage;
 import java.awt.image.WritableRaster;
 import java.io.*;
+import java.util.Stack;
 
 import static java.lang.Math.abs;
 import static java.lang.Math.signum;
@@ -16,6 +17,7 @@ import static java.lang.Math.signum;
 public class DrawPanel extends JPanel implements MouseListener {
     BufferedImage img;
     WritableRaster raster;
+
     double hexScale = 1.0;
     int fieldWidth = 25;
     int fieldHeigth = 20;
@@ -30,6 +32,7 @@ public class DrawPanel extends JPanel implements MouseListener {
     boolean isFieldActive = true;
     int[] basicColor = { 255, 255, 255, 0 }; //
     boolean impactMode = false;
+    Stack<Span> spanStack = new Stack<>();
 
     public DrawPanel()
     {
@@ -52,6 +55,7 @@ public class DrawPanel extends JPanel implements MouseListener {
         }
  //       myLine(0,0,100,300,raster);
         drawField(fieldWidth,fieldHeigth,raster );
+        //myLine(300,100,0,200,raster );
         lifeModel = new LifeModel(fieldWidth,fieldHeigth);
 
         Graphics2D g2 = (Graphics2D)img.getGraphics();
@@ -154,6 +158,7 @@ public class DrawPanel extends JPanel implements MouseListener {
     }
     void initModel()
     {
+        lifeModel.setInitiated(true);
         int[] redColor  = { 255, 0, 0, 0 };
         int[] color = null;
         for ( int i = 0; i < fieldHeigth; i++ )
@@ -188,7 +193,8 @@ public class DrawPanel extends JPanel implements MouseListener {
     }
     void drawFieldFromModel()
     {
-        drawField(fieldWidth, fieldHeigth, raster);
+        printModel();
+        //drawField(fieldWidth, fieldHeigth, raster);
         for ( int i = 0; i < fieldHeigth; i++ )
         {
             for (int j = 0; j < fieldWidth - (i % 2); j++)
@@ -342,7 +348,7 @@ public class DrawPanel extends JPanel implements MouseListener {
         }
     }
 
-    void myLine(int x1, int y1, int x2, int y2, WritableRaster raster )
+    void myLine(int x1i, int y1i, int x2i, int y2i, WritableRaster raster )
     { // this func realizes Bresenham's algorhytm
         if ( lineWidth > 1 )
         {
@@ -351,13 +357,80 @@ public class DrawPanel extends JPanel implements MouseListener {
             BasicStroke stroke = new BasicStroke(lineWidth);
             graphics2D.setColor(Color.BLACK);
             graphics2D.setStroke(stroke);
-            graphics2D.drawLine(x1,y1,x2,y2);
+            graphics2D.drawLine(x1i,y1i,x2i,y2i);
 
             return;
         }
 
-        int x, y, dx, dy, incx, incy, pdx, pdy, es, el, err;
+        int x, y, dx, dy, incx, incy, pdx, pdy, es, el, err, curerr, errstep;
+        int x1,x2,y1,y2;
+        int signy = 1, signx = 1;
+        int temp;
         int[] blackColor  = { 0, 0, 0, 0 };
+
+//BEGIN
+        x1 = x1i;
+        x2 = x2i;
+        y1 = y1i;
+        y2 = y2i;
+        dx = Math.abs(x2-x1);
+        dy = Math.abs(y2-y1);
+
+        if ( dx > dy ) // if it's more horizontal
+        {
+            if ( x2i < x1i )
+            {
+                x1 = x2i;
+                x2 = x1i;
+                y1 = y2i;
+                y2 = y1i;
+            }
+            signy = (int)Math.signum(y2-y1);
+            y = y1;
+            curerr = 0;
+            for ( int i = x1; i <= x2; i++ )
+            {
+                try {
+                    raster.setPixel(i, y, blackColor);
+                }
+                catch ( ArrayIndexOutOfBoundsException AOB )
+                {
+                    System.out.println("AOEX" + i + " " + y );
+                }
+                curerr+=dy;
+                if ( 2*curerr >= dx )
+                {
+                    y+=signy;
+                    curerr -= dx;
+                }
+            }
+        }
+        else // if it's more vertical
+        {
+            if ( y2i < y1i )
+            {
+                y1 = y2i;
+                y2 = y1i;
+                x1 = x2i;
+                x2 = x1i;
+            }
+            signx = (int)Math.signum(x2-x1);
+            x = x1;
+            curerr = 0;
+            for ( int i = y1; i <= y2; i++ )
+            {
+                raster.setPixel(x, i, blackColor);
+                curerr+=dx;
+                if( 2*curerr >= dy )
+                {
+                    x+=signx;
+                    curerr -= dy;
+                }
+            }
+        }
+        if ( true )
+            return;
+//END
 
         dx = x2 - x1;//проекция на ось x
         dy = y2 - y1;//проекция на ось y
@@ -502,6 +575,38 @@ public class DrawPanel extends JPanel implements MouseListener {
     }
     void span(int x, int y, Color color )
     {
+        if ( false )
+        {
+            int[] gotColor = null;
+            int[] basicColor = null;
+            gotColor = raster.getPixel(x, y, gotColor) ;
+            basicColor = raster.getPixel(x, y, basicColor) ;
+            final int[] blackColor = {0,0,0};
+            final int greenColor[] = {0,255,0};
+            final int[] whiteColor = {255,255,255};
+            Color fillcolor = color;
+            int[] fillcolorInt = {color.getRed(), color.getGreen(), color.getBlue() };
+            int[] tempcolor = null;
+            tempcolor = raster.getPixel(x,y,tempcolor);
+
+            if ( compareColors(tempcolor,blackColor))
+                return;
+
+            if ( !xormode && compareColors(tempcolor, fillcolorInt)) {
+                return;
+            }
+            if ( xormode && compareColors(tempcolor, fillcolorInt)) {
+                fillcolor = Color.WHITE;
+            }
+            else if ( xormode && compareColors(tempcolor, whiteColor ))
+            {
+                fillcolor = Color.GREEN;
+            }
+
+            spanStack.push(new Span(x,y));
+            while (spanFilling(tempcolor, fillcolor ));
+            return;
+        }
         int[] gotColor = null;
         int[] basicColor = null;
         int[] blackColor = {0,0,0};
@@ -681,5 +786,139 @@ public class DrawPanel extends JPanel implements MouseListener {
             ioe.printStackTrace();
         }
     }
+    boolean compareColors( int[] color1, int[] color2 )
+    {
+        for ( int i = 0; i < 3; i++ )
+        {
+            if( color1[i] != color2[i] )
+                return false;
+        }
+        return true;
+    }
+    boolean spanFilling(int[] seedColor, Color fillColor)
+    {
+        int[] tempcolor = null;
+        if ( !spanStack.isEmpty() )
+        {
+            Span current = spanStack.pop();
+            current.fill(fillColor);
+            Span inserting = null;
+            for ( int i = current.xleft; i < current.xright; i++ ) // finding new spans
+            {
+                try {
+                    tempcolor = raster.getPixel(i, current.y + 1, tempcolor); // finding spans below
+                    if ( !compareColors(tempcolor, seedColor ))
+                    {
+                        continue;
+                    }
+                }
+                catch ( ArrayIndexOutOfBoundsException aob )
+                {
+                    aob.printStackTrace();
+                    break;
+                }
+                if (inserting == null) {
+                    if (compareColors(seedColor, tempcolor)) // if color is like seed
+                    {
+                        inserting = new Span(i, current.y + 1);
+                        continue;
+                    }
+                } else // inserting is not null
+                {
+                    if ( i <= inserting.xright && i >= inserting.xleft ) // if the same span
+                    {
+                        continue;
+                    }
+                    else // if it's a new span
+                    {
+                        spanStack.push(inserting); // push old and now the new king is the role model
+                        inserting = new Span(i, current.y+1 );
+                        continue;
+                    }
+                }
+            }
+            if ( inserting != null )
+                spanStack.push(inserting);
+            inserting = null;
+            for ( int i = current.xleft; i < current.xright; i++ ) // finding new spans
+            {
+                try {
+                    tempcolor = raster.getPixel(i, current.y - 1, tempcolor); // finding spans above
+                    if ( !compareColors(tempcolor, seedColor ))
+                    {
+                        continue;
+                    }
+                }
+                catch ( ArrayIndexOutOfBoundsException aob )
+                {
+                    aob.printStackTrace();
+                    break;
+                }
+                if (inserting == null) {
+                    if (compareColors(seedColor, tempcolor)) // if color is like seed
+                    {
+                        inserting = new Span(i, current.y - 1);
+                        continue;
+                    }
+                } else // inserting is not null
+                {
+                    if ( i <= inserting.xright && i >= inserting.xleft ) // if the same span
+                    {
+                        continue;
+                    }
+                    else // if it's a new span
+                    {
+                        spanStack.push(inserting); // push old and now the new king is the role model
+                        inserting = new Span(i, current.y-1 );
+                        continue;
+                    }
+                }
+            }
+            if ( inserting != null )
+                spanStack.push(inserting);
+            return true;
+        }
+        else
+            return false;
+    }
+    private class Span
+    {
+        int xleft, xright, y;
 
+        Span(int xl, int xr, int yin ) // straightforward constructor
+        {
+            xleft = xl; xright = xr; y = yin;
+        }
+        Span(int x, int y)
+        { // finds and creates Span example
+            this.y = y;
+            int[] seedColor = null;
+            int[] blackColor = {0, 0, 0};
+            int[] gotColor = null;
+            int[] borders = new int[2];
+            seedColor = raster.getPixel(x, y, seedColor);
+
+            for (int i = x + 1; ; i++) {
+                gotColor = raster.getPixel(i, y, gotColor);
+                if (!compareColors(seedColor, gotColor)) {
+                    xright = i;
+                    break;
+                }
+            }
+            for (int i = x - 1; ; i--) {
+                gotColor = raster.getPixel(i, y, gotColor);
+                if (!compareColors(gotColor,seedColor)) {
+                    xleft = i + 1;
+                    break;
+                }
+            }
+        }
+        void fill( Color color)
+        {
+            int[] placeColor = {color.getRed(), color.getGreen(), color.getBlue()};
+            for (int i = xleft; i < xright; i++) {
+                raster.setPixel(i, y, placeColor);
+            }
+        }
+    }
 }
