@@ -1,3 +1,5 @@
+package ru.nsu.fit.g14205.Khabarov;
+
 import javafx.stage.FileChooser;
 
 import javax.swing.*;
@@ -19,6 +21,7 @@ public class MainFrame extends JFrame
     JFileChooser chooser;
     ActionListener fileOpener;
     MainFrame thislink;
+    MainPane mainPane;
 
     public MainFrame()
     {
@@ -28,89 +31,42 @@ public class MainFrame extends JFrame
         this.setLocationRelativeTo(null);
         initFileListener();
         thislink = this;
+        mainPane = new MainPane();
 
         JButton fileButton = new JButton("File", new ImageIcon("resources/file.png"));
         fileButton.setToolTipText("Open file");
         JButton clearButton = new JButton();
         clearButton.setToolTipText("Clear the field");
-        JButton next = new JButton(("Next"));
-        next.setToolTipText("Next step");
-        JButton xorButton = new JButton("R");
-        xorButton.setToolTipText("Xor or Replace mode");
         JButton options = new JButton("Opts");
         options.setToolTipText("Options");
-        JButton start = new JButton("Start");
-        start.setToolTipText("Start game!");
-        JButton stop = new JButton("Stop");
-        stop.setToolTipText("Pause game");
-        JButton impact = new JButton("Impact");
-        impact.setToolTipText("Show impact values");
         JButton save = new JButton("Save");
         save.setToolTipText("Save into file");
         JButton about = new JButton();
         about.setToolTipText("About program");
+        JButton grayButton = new JButton("Gray");
+        JButton sobelButton = new JButton("Sobel");
 
         ImageIcon aboutIcon = new ImageIcon("resources/question.png");
         about.setIcon(aboutIcon);
-        ImageIcon impactIcon = new ImageIcon("resources/impact.png");
-        impact.setIcon(impactIcon);
         ImageIcon saveIcon = new ImageIcon("resources/save.png");
         save.setIcon(saveIcon);
-        ImageIcon startIcon = new ImageIcon("resources/play.png");
-        start.setIcon(startIcon);
-        ImageIcon nextIcon = new ImageIcon("resources/next.png");
-        next.setIcon(nextIcon);
         ImageIcon clearIcon = new ImageIcon("resources/clear.png");
         clearButton.setIcon(clearIcon);
         ImageIcon settingsIcon = new ImageIcon("resources/gear.png");
         options.setIcon(settingsIcon);
-        ImageIcon xorIcon = new ImageIcon("resources/replace.png");
-        xorButton.setIcon(xorIcon);
-        ImageIcon stopIcon = new ImageIcon("resources/stop.png");
-        stop.setIcon(stopIcon);
 
         drawPanel = new DrawPanel();
-        impact.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                if (!drawPanel.impactMode) {
-                    drawPanel.impactMode = true;
-                    drawPanel.initModel();
-                    drawPanel.metricPrinter();
-                }
-                else {
-                    drawPanel.impactMode = false;
-                    drawPanel.nullifyImage();
-                    drawPanel.drawFieldFromModel();
-                }
-            }
-        });
-        start.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                drawPanel.start();
-            }
 
-        });
-        stop.addActionListener(new ActionListener() {
+        grayButton.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                drawPanel.stop();
+                mainPane.drawPanelC.setImg(Filters.applyGrayscale(mainPane.drawPanelB.img));
             }
         });
-
-        next.addActionListener(new ActionListener() {
+        sobelButton.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                if ( !drawPanel.lifeModel.isInitiated() )
-                    drawPanel.initModel();
-                drawPanel.lifeModel.bypass();
-                if ( drawPanel.impactMode ) {
-                    drawPanel.nullifyImage();
-                    drawPanel.drawFieldFromModel();
-                    drawPanel.metricPrinter();
-                }
-                drawPanel.drawFieldFromModel();
+                mainPane.drawPanelC.setImg(Filters.applySobel(Filters.applyGrayscale(mainPane.drawPanelB.img)));
             }
         });
         options.addActionListener(new ActionListener() {
@@ -131,28 +87,10 @@ public class MainFrame extends JFrame
             public void actionPerformed(ActionEvent e) {
                 System.out.println("Command caught: " + e.getActionCommand() );
                 drawPanel.nullifyImage();
-                drawPanel.drawFieldFromModel();
-                drawPanel.clearSockets();
                 drawPanel.repaint();
                 drawPanel.impactMode = false;
             }
 
-        });
-        xorButton.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                if (drawPanel.xormode)
-                {
-                    drawPanel.setXormode(false);
-                    xorButton.setText("R");
-                }
-                else {
-                    drawPanel.setXormode(true);
-                    xorButton.setText("X");
-                }
-                drawPanel.repaint();
-                xorButton.repaint();
-            }
         });
         save.addActionListener(new ActionListener() {
             @Override
@@ -165,7 +103,6 @@ public class MainFrame extends JFrame
                 {
                     File file = chooser.getSelectedFile();
                     chooseFileFrame.setVisible(false);
-                    drawPanel.saveStateInFile(file);
                 }
             }
         });
@@ -180,14 +117,11 @@ public class MainFrame extends JFrame
         toolBar = new JToolBar("MaiNToolbar");
         toolBar.add(fileButton);
         toolBar.add(clearButton);
-        toolBar.add(xorButton);
         toolBar.add(options);
-        toolBar.add(next);
-        toolBar.add(start);
-        toolBar.add(stop);
-        toolBar.add(impact);
         toolBar.add(save);
         toolBar.add(about);
+        toolBar.add(grayButton);
+        toolBar.add(sobelButton);
         menuBar.setVisible(true);
 
         JMenu menu = new JMenu("File");
@@ -236,7 +170,9 @@ public class MainFrame extends JFrame
 
         drawPanel.setBackground(Color.white);
         //drawPanel.setSize(800,500);
-        JScrollPane scrollPane = new JScrollPane(drawPanel);
+        //JScrollPane scrollPane = new JScrollPane(drawPanel);
+        JScrollPane scrollPane = new JScrollPane(mainPane);
+
         scrollPane.setPreferredSize(new Dimension(800,500));
         drawPanel.setLayout(new BoxLayout(drawPanel, BoxLayout.Y_AXIS));
         scrollPane.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_ALWAYS);
@@ -246,6 +182,7 @@ public class MainFrame extends JFrame
         //this.add(drawPanel);
         this.add(scrollPane, BorderLayout.CENTER);
 
+        /* ON_EXIT ACTION
         this.addWindowListener(new WindowAdapter() {
             @Override
             public void windowClosing(WindowEvent e) {
@@ -257,12 +194,11 @@ public class MainFrame extends JFrame
                 {
                     File file = chooser.getSelectedFile();
                     chooseFileFrame.setVisible(false);
-                    drawPanel.saveStateInFile(file);
                 }
             }
 
         });
-
+*/
 
         this.setVisible(true);
         this.pack();
@@ -280,7 +216,6 @@ public class MainFrame extends JFrame
                 {
                     File file = chooser.getSelectedFile();
                     chooseFileFrame.setVisible(false);
-                    drawPanel.initModelFromFile(file);
                 }
             }
         };

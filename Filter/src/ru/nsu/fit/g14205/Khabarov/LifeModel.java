@@ -1,3 +1,5 @@
+package ru.nsu.fit.g14205.Khabarov;
+
 import com.sun.xml.internal.ws.policy.privateutil.PolicyUtils;
 
 import java.awt.*;

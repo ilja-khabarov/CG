@@ -1,3 +1,5 @@
+package ru.nsu.fit.g14205.Khabarov;
+
 import javax.swing.*;
 import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
@@ -31,9 +33,6 @@ public class ControlsPane extends JPanel implements ChangeListener {
         setLayout(new BoxLayout(this, BoxLayout.Y_AXIS));
         drawPanel = dp;
         lineThickness = new SettingsElementPane("Line thickness", 5, 1, drawPanel.lineWidth);
-        hexSize = new SettingsElementPane("Hex size", 50, 6, (int)Math.round(drawPanel.hexScale*10));
-        rowsAmount = new SettingsElementPane("Rows", 101,1,drawPanel.fieldHeigth);
-        columnsAmount= new SettingsElementPane("Columns", 101,1,drawPanel.fieldWidth);
         JButton ok = new JButton("OK");
         initRadioPane();
         initOkListener();
@@ -77,25 +76,6 @@ public class ControlsPane extends JPanel implements ChangeListener {
         okListener = new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                //drawPanel = new DrawPanel(); // here should be some code about initialisation
-                drawPanel.fieldWidth = Integer.parseInt(columnsAmount.getVal());
-                drawPanel.fieldHeigth = Integer.parseInt(rowsAmount.getVal());
-                drawPanel.hexScale = Integer.parseInt(hexSize.getVal()) / 10.0;
-                System.out.println("Scale is " + drawPanel.hexScale );
-                drawPanel.lineWidth = Integer.parseInt(lineThickness.getVal());
-                //System.out.println(columnsAmount.getVal()+" is width");
-                drawPanel.setXormode(xor.isSelected());
-                drawPanel.img =
-                        new BufferedImage( (int)(28*drawPanel.fieldWidth*drawPanel.hexScale)+1,(int)(23*(drawPanel.fieldHeigth+1)*drawPanel.hexScale), BufferedImage.TYPE_3BYTE_BGR );
-                drawPanel.raster = drawPanel.img.getRaster();
-                drawPanel.nullifyImage();
-                drawPanel.setPreferredSize(new Dimension(drawPanel.img.getWidth(), drawPanel.img.getHeight()));
-                drawPanel.setSizesAccordigToScale();
-
-
-                drawPanel.drawField(drawPanel.fieldWidth, drawPanel.fieldHeigth, drawPanel.raster );
-                drawPanel.lifeModel = new LifeModel(drawPanel.fieldWidth, drawPanel.fieldHeigth);
-                drawPanel.repaint();
             }
         };
     }

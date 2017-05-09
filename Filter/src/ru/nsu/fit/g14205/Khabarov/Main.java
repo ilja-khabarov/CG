@@ -1,4 +1,4 @@
-
+package ru.nsu.fit.g14205.Khabarov;
 
 
 public class Main {
