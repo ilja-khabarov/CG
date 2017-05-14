@@ -26,7 +26,8 @@ public class MainFrame extends JFrame
     public MainFrame()
     {
         super();
-        this.setSize(800,600);
+        this.setSize(1200,600);
+        this.setPreferredSize(new Dimension(1150,600));
         this.setMinimumSize(new Dimension(800,600));
         this.setLocationRelativeTo(null);
         initFileListener();
@@ -41,10 +42,14 @@ public class MainFrame extends JFrame
         options.setToolTipText("Options");
         JButton save = new JButton("Save");
         save.setToolTipText("Save into file");
-        JButton about = new JButton();
+        JButton about = new JButton("About");
         about.setToolTipText("About program");
         JButton grayButton = new JButton("Gray");
         JButton sobelButton = new JButton("Sobel");
+        JButton x2Button = new JButton("X2");
+        JButton negativeButton = new JButton("Neg");
+        JButton embossButton = new JButton("Emb");
+        JButton rotationButton = new JButton("Rot");
 
         ImageIcon aboutIcon = new ImageIcon("resources/question.png");
         about.setIcon(aboutIcon);
@@ -67,6 +72,30 @@ public class MainFrame extends JFrame
             @Override
             public void actionPerformed(ActionEvent e) {
                 mainPane.drawPanelC.setImg(Filters.applySobel(Filters.applyGrayscale(mainPane.drawPanelB.img)));
+            }
+        });
+        x2Button.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                mainPane.drawPanelC.setImg(Filters.zoom2(mainPane.drawPanelB.img));
+            }
+        });
+        negativeButton.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                mainPane.drawPanelC.setImg(Filters.applyNegative(mainPane.drawPanelB.img));
+            }
+        });
+        embossButton.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                mainPane.drawPanelC.setImg(Filters.applyEmboss(Filters.applyGrayscale(mainPane.drawPanelB.img)));
+            }
+        });
+        rotationButton.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                mainPane.drawPanelC.setImg(Filters.applyRotation(mainPane.drawPanelB.img, 28));
             }
         });
         options.addActionListener(new ActionListener() {
@@ -122,6 +151,10 @@ public class MainFrame extends JFrame
         toolBar.add(about);
         toolBar.add(grayButton);
         toolBar.add(sobelButton);
+        toolBar.add(x2Button);
+        toolBar.add(negativeButton);
+        toolBar.add(embossButton);
+        toolBar.add(rotationButton);
         menuBar.setVisible(true);
 
         JMenu menu = new JMenu("File");
