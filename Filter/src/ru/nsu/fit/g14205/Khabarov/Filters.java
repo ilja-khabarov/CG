@@ -9,8 +9,8 @@ import java.awt.image.WritableRaster;
 public class Filters {
 
 
-    static BufferedImage applySobel(BufferedImage inputImage) {
-        int sobelBorder = 100;
+    static BufferedImage applySobel(BufferedImage inputImage, int border) {
+        int sobelBorder = border;
         BufferedImage out = null;
         int[][] horizontalMatrix = {{-1, 0, 1},
                 {-2, 0, 2},
@@ -37,9 +37,17 @@ public class Filters {
                         }
                     }
                 }
+                tempColorValue = Math.abs(tempColorValue);
+                if ( tempColorValue > 255 )
+                    tempColorValue = 255;
                 resultcolor[0] = tempColorValue;
 
-                if (tempColorValue > sobelBorder)
+                if ( Math.abs(tempColorValue) > 255 )
+                {
+                    System.out.println(""+tempColorValue);
+                }
+
+                if (Math.abs(tempColorValue) > sobelBorder)
                     outRaster.setPixel(j - 1, i - 1, resultcolor);
                 else
                     outRaster.setPixel(j - 1, i - 1, blackColorGrayscale);
@@ -142,14 +150,100 @@ public class Filters {
                 rightcolor = inRaster.getPixel(j+2, i+1, rightcolor );
 
                 resultcolor[0] = leftcolor[0] - upcolor[0] + botcolor[0] - rightcolor[0] + 128;
-                /*if ( resultcolor[0] > 255 )
+                if ( resultcolor[0] > 255 )
                     resultcolor[0] = 255;
-                    */
+                if ( resultcolor[0] < 0 )
+                    resultcolor[0] = 0;
                 outRaster.setPixel(j,i,resultcolor);
             }
         }
         return out;
     }
+    static BufferedImage applyHarsh(BufferedImage inputImage)
+    {
+        BufferedImage out = new BufferedImage(inputImage.getWidth()-2, inputImage.getHeight()-2, BufferedImage.TYPE_BYTE_GRAY );
+        int wid = out.getWidth();
+        int hei = out.getHeight();
+        WritableRaster inRaster = inputImage.getRaster();
+        WritableRaster outRaster = out.getRaster();
+
+        for ( int i = 0; i < hei; i++ )
+        {
+            for ( int j = 0; j < wid; j++ )
+            {
+            }
+
+        }
+
+        return out;
+    }
+    static BufferedImage applyMatrix3(BufferedImage inputImage, int[][] matrix)
+    {
+        BufferedImage out = new BufferedImage(inputImage.getWidth()-2, inputImage.getHeight()-2, inputImage.getType() );
+        int wid = inputImage.getWidth();
+        int hei = inputImage.getHeight();
+        WritableRaster inRaster = inputImage.getRaster();
+        WritableRaster outRaster = out.getRaster();
+
+        final int[][] matrix1 = {{-1,-1,-1},{-1,10,-1},{-1,-1,-1}};
+
+        int[] bufcolor = null;
+        int[] lu = null;
+        int[] lc = null;
+        int[] lb = null;
+        int[] ru = null;
+        int[] rc = null;
+        int[] rb = null;
+        int[] cu = null;
+        int[] cc = null;
+        int[] cb = null;
+        int[] resultcolor = {0,0,0};
+        int matsum = 0;
+        for ( int i = 0; i < 3; i++ )
+        {
+            for ( int j = 0; j < 3; j++ )
+                matsum += matrix[i][j];
+        }
+
+        int sizeOfPixel = 3;
+        if ( inputImage.getType() == BufferedImage.TYPE_BYTE_GRAY )
+            sizeOfPixel = 1;
+
+
+        for ( int i = 1; i < hei-1; i++ )
+        {
+            for ( int j = 1; j < wid-1; j++ )
+            {
+                lu = inRaster.getPixel(j-1, i-1, lu);
+                lc = inRaster.getPixel(j-1, i, lc);
+                lb = inRaster.getPixel(j-1, i+1, lb);
+
+                cu = inRaster.getPixel(j, i-1, cu);
+                cc = inRaster.getPixel(j, i, cc);
+                cb = inRaster.getPixel(j, i+1, cb);
+
+                ru = inRaster.getPixel(j+1, i-1, ru);
+                rc = inRaster.getPixel(j+1, i, rc);
+                rb = inRaster.getPixel(j+1, i+1, rb);
+
+                for ( int k = 0; k < sizeOfPixel; k++ )
+                {
+                    resultcolor[k] = lu[k] * matrix[0][0] + lc[k] * matrix[1][0] + lb[k] * matrix[2][0]
+                                    +cu[k] * matrix[0][1] + cc[k] * matrix[1][1] + cb[k] * matrix[2][1]
+                                    +ru[k] * matrix[0][2] + rc[k] * matrix[1][2] + rb[k] * matrix[2][2];
+                    resultcolor[k] = resultcolor[k]/matsum;
+                    if ( resultcolor[k] > 255 )
+                        resultcolor[k] = 255;
+                    if ( resultcolor[k] < 0 )
+                        resultcolor[k] = 0;
+                }
+                outRaster.setPixel(j-1,i-1, resultcolor);
+            }
+
+        }
+        return out;
+    }
+
     static BufferedImage applyRotation(BufferedImage inputImage, int angleDegrees )
     {
         BufferedImage out = new BufferedImage(inputImage.getWidth()-2, inputImage.getHeight()-2, BufferedImage.TYPE_3BYTE_BGR );
@@ -188,6 +282,119 @@ public class Filters {
                 }
             }
         }
+
+        return out;
+    }
+    static BufferedImage applyDither(BufferedImage inputImage ) {
+
+        BufferedImage out = new BufferedImage(inputImage.getWidth(), inputImage.getHeight(), inputImage.getType());
+
+        int wid = inputImage.getWidth();
+        int hei = inputImage.getHeight();
+        WritableRaster inRaster = inputImage.getRaster();
+        WritableRaster outRaster = out.getRaster();
+
+        final int[][] ditherMatrix4_x4 = {
+                {60, 28, 52, 20},
+                {12, 44,  4, 36},
+                {48, 16, 56, 24},
+                {0, 32,  8, 40 }
+        };
+        int[][] ditherMatrix8 = new int[8][8];
+        int[][] ditherMatrix16 = new int[16][16];
+
+        final int[][] coeffMatrix = {{3,1},{0,2}};
+
+        for ( int i = 0; i < 2; i++ )
+        {
+            for ( int j = 0; j < 2; j++ )
+            {
+                for ( int k = 0; k < 4; k++ )
+                {
+                    for ( int m = 0; m < 4; m++ )
+                    {
+                        ditherMatrix8[i*4+k][j*4+m] = ditherMatrix4_x4[k][m] + coeffMatrix[i][j];
+                    }
+                }
+            }
+        }
+
+        for ( int i = 0; i < 2; i++ ) // build final matrix
+        {
+            for ( int j = 0; j < 2; j++ )
+            {
+                for ( int k = 0; k < 8; k++ )
+                {
+                    for ( int m = 0; m < 8; m++ )
+                    {
+                        ditherMatrix16[i*8+k][j*8+m] = ditherMatrix8[k][m]*4 + coeffMatrix[i][j];
+                    }
+                }
+
+            }
+        }
+
+
+        int[] tempcolor = null;
+        int pixelsize;
+        if ( inputImage.getType() == BufferedImage.TYPE_3BYTE_BGR )
+            pixelsize = 3;
+        else
+            pixelsize = 1;
+        int[] resultcolor = new int[pixelsize];
+
+        for ( int i = 0; i < inputImage.getHeight(); i++ )
+        {
+            for ( int j = 0; j < inputImage.getWidth(); j++ )
+            {
+                tempcolor = inRaster.getPixel( j, i, tempcolor );
+                for ( int k = 0; k < pixelsize; k++ )
+                {
+                    if ( tempcolor[k] > ditherMatrix16[j%16][i%16] )
+                        resultcolor[k] = 255;
+                    else
+                        resultcolor[k] = 0;
+                }
+                outRaster.setPixel(j,i,resultcolor);
+            }
+        }
+
+
+        // 60, 28, 52, 20
+        // 12, 44,  4, 36
+        // 48, 16, 56, 24
+        //  0, 32,  8, 40
+        return out;
+    }
+    static BufferedImage applyGamma(BufferedImage inputImage, double parameter) {
+
+        BufferedImage out = new BufferedImage(inputImage.getWidth(), inputImage.getHeight(), inputImage.getType());
+
+        int wid = inputImage.getWidth();
+        int hei = inputImage.getHeight();
+        WritableRaster inRaster = inputImage.getRaster();
+        WritableRaster outRaster = out.getRaster();
+
+        int[] bufcolor = null;
+        int pixelsize = 0;
+        if ( inputImage.getType() == BufferedImage.TYPE_3BYTE_BGR )
+            pixelsize = 3;
+        else
+            pixelsize = 1;
+        int[] resultcolor = new int[pixelsize];
+
+        for ( int i = 0; i < inputImage.getHeight(); i++ )
+        {
+            for ( int j = 0; j < inputImage.getWidth(); j++ ) {
+                bufcolor = inRaster.getPixel( j, i, bufcolor );
+                for ( int k = 0; k < pixelsize; k++ )
+                {
+                    resultcolor[k] = (int)( Math.pow((double)bufcolor[k]/255, parameter ) * 255);
+                }
+                outRaster.setPixel(j,i,resultcolor);
+            }
+        }
+
 
         return out;
     }
