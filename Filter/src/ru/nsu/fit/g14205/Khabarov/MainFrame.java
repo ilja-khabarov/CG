@@ -150,7 +150,6 @@ public class MainFrame extends JFrame
                 optionsFrame.setSize(450,500);
                 optionsFrame.setLocationRelativeTo(thislink);
                 optionsFrame.setLayout(new FlowLayout(FlowLayout.LEADING));
-                optionsFrame.add(new ControlsPane(drawPanel) );
                 optionsFrame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
                 optionsFrame.setVisible(true);
             }
