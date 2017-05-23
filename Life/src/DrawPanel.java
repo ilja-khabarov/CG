@@ -4,6 +4,7 @@ import javax.swing.*;
 import java.awt.*;
 import java.awt.event.*;
 import java.awt.image.BufferedImage;
+import java.awt.image.ColorModel;
 import java.awt.image.WritableRaster;
 import java.io.*;
 import java.util.Stack;
@@ -16,8 +17,9 @@ import static java.lang.Math.signum;
  */
 public class DrawPanel extends JPanel implements MouseListener {
     BufferedImage img;
+    BufferedImage doubleBuffer;
+    WritableRaster doubleBufferRaster;
     WritableRaster raster;
-
     double hexScale = 1.0;
     int fieldWidth = 25;
     int fieldHeigth = 20;
@@ -33,6 +35,14 @@ public class DrawPanel extends JPanel implements MouseListener {
     int[] basicColor = { 255, 255, 255, 0 }; //
     boolean impactMode = false;
     Stack<Span> spanStack = new Stack<>();
+
+
+    static BufferedImage deepCopy(BufferedImage bi) {
+        ColorModel cm = bi.getColorModel();
+        boolean isAlphaPremultiplied = cm.isAlphaPremultiplied();
+        WritableRaster raster = bi.copyData(null);
+        return new BufferedImage(cm, raster, isAlphaPremultiplied, null);
+    }
 
     public DrawPanel()
     {
@@ -55,7 +65,6 @@ public class DrawPanel extends JPanel implements MouseListener {
         }
  //       myLine(0,0,100,300,raster);
         drawField(fieldWidth,fieldHeigth,raster );
-        //myLine(300,100,0,200,raster );
         lifeModel = new LifeModel(fieldWidth,fieldHeigth);
 
         Graphics2D g2 = (Graphics2D)img.getGraphics();
@@ -103,7 +112,14 @@ public class DrawPanel extends JPanel implements MouseListener {
                         //oob.printStackTrace();
                         return;
                     }
-                    repaint();
+                    if ( impactMode ) {
+                        doubleBuffer = deepCopy(img);
+                        metricPrinter();
+                        repaint();
+                    }
+                    else
+                        repaint();
+                    //repaint();
 
                     super.mouseDragged(e);
                 }
@@ -143,7 +159,8 @@ public class DrawPanel extends JPanel implements MouseListener {
     }
     void metricPrinter()
     {
-        lifeModel.metricPrinter((Graphics2D)(img.getGraphics()), angle_h, angle_w, vertical );
+        doubleBuffer = deepCopy(img);
+        lifeModel.metricPrinter((Graphics2D)(doubleBuffer.getGraphics()), angle_h, angle_w, vertical );
         this.repaint();
     }
     void start()
@@ -158,7 +175,6 @@ public class DrawPanel extends JPanel implements MouseListener {
     }
     void initModel()
     {
-        lifeModel.setInitiated(true);
         int[] redColor  = { 255, 0, 0, 0 };
         int[] color = null;
         for ( int i = 0; i < fieldHeigth; i++ )
@@ -193,8 +209,7 @@ public class DrawPanel extends JPanel implements MouseListener {
     }
     void drawFieldFromModel()
     {
-        printModel();
-        //drawField(fieldWidth, fieldHeigth, raster);
+        drawField(fieldWidth, fieldHeigth, raster);
         for ( int i = 0; i < fieldHeigth; i++ )
         {
             for (int j = 0; j < fieldWidth - (i % 2); j++)
@@ -341,7 +356,13 @@ public class DrawPanel extends JPanel implements MouseListener {
                 if (!xormode) {
                     span(e.getX(), e.getY(), Color.GREEN);
                 }
-                this.repaint();
+                if ( impactMode ) {
+                    doubleBuffer = deepCopy(img);
+                    metricPrinter();
+                    this.repaint();
+                }
+                else
+                    this.repaint();
             } catch (ArrayIndexOutOfBoundsException OOB) {
                 return;
             }
@@ -431,117 +452,6 @@ public class DrawPanel extends JPanel implements MouseListener {
         if ( true )
             return;
 //END
-
-        dx = x2 - x1;//проекция на ось x
-        dy = y2 - y1;//проекция на ось y
-
-        incx = (int)Math.signum(dx);
-	/*
-	 * Определяем, в какую сторону нужно будет сдвигаться. Если dx < 0, т.е. отрезок идёт
-	 * справа налево по иксу, то incx будет равен -1.
-	 * Это будет использоваться в цикле постороения.
-	 */
-        incy = (int)Math.signum(dy);
-	/*
-	 * Аналогично. Если рисуем отрезок снизу вверх -
-	 * это будет отрицательный сдвиг для y (иначе - положительный).
-	 */
-
-        if (dx < 0) dx = -dx;//далее мы будем сравнивать: "if (dx < dy)"
-        if (dy < 0) dy = -dy;//поэтому необходимо сделать dx = |dx|; dy = |dy|
-        //эти две строчки можно записать и так: dx = Math.abs(dx); dy = Math.abs(dy);
-
-        if (dx > dy)
-        //определяем наклон отрезка:
-        {
-	 /*
-	  * Если dx > dy, то значит отрезок "вытянут" вдоль оси икс, т.е. он скорее длинный, чем высокий.
-	  * Значит в цикле нужно будет идти по икс (строчка el = dx;), значит "протягивать" прямую по иксу
-	  * надо в соответствии с тем, слева направо и справа налево она идёт (pdx = incx;), при этом
-	  * по y сдвиг такой отсутствует.
-	  */
-            pdx = incx;
-            pdy = 0;
-
-            es = dy;
-            el = dx;
-        }
-        else//случай, когда прямая скорее "высокая", чем длинная, т.е. вытянута по оси y
-        {
-            pdx = 0;
-            pdy = incy;
-
-            es = dx;
-            el = dy;//тогда в цикле будем двигаться по y
-        }
-
-        x = x1;
-        y = y1;
-        err = el/2;
-        raster.setPixel(x,y,blackColor);
-        //все последующие точки возможно надо сдвигать, поэтому первую ставим вне цикла
-
-        for (int t = 0; t < el; t++)//идём по всем точкам, начиная со второй и до последней
-        {
-            err -= es;
-            if (err < 0)
-            {
-                err += el;
-                x += incx;//сдвинуть прямую (сместить вверх или вниз, если цикл проходит по иксам)
-                y += incy;//или сместить влево-вправо, если цикл проходит по y
-            }
-            else
-            {
-                x += pdx;//продолжить тянуть прямую дальше, т.е. сдвинуть влево или вправо, если
-                y += pdy;//цикл идёт по иксу; сдвинуть вверх или вниз, если по y
-            }
-
-            try {
-                raster.setPixel(x, y, blackColor);
-            }
-            catch ( ArrayIndexOutOfBoundsException iob )
-            {
-                System.out.println("Exception: " + x + " " + y );
-                iob.printStackTrace();
-            }
-        }
-
-        /*
-        int maxlen;
-        int[] blackColor  = { 0, 0, 0, 0 };
-
-
-        int deltax = (x2-x1);
-        int signx = (int) Math.signum(deltax);
-        int deltay = (y2-y1);
-        int signy = (int) Math.signum(deltay);
-
-        if (deltax == 0)
-        {
-            if ( y1 < y2 ) {
-                for (int i = y1; i < y2; i++)
-                    raster.setPixel(x1, i, blackColor );
-            }
-            else
-            {
-                for (int i = y2; i < y1; i++)
-                    raster.setPixel(x1, i, blackColor );
-            }
-            return;
-        }
-        if ( signx*deltax > signy*deltay )
-        {
-            maxlen = deltax;
-        }
-
-        int error = 0;
-        int deltaerr = deltay;
-        int y = y1;
-        for ( int i = 0; i < maxlen; i++ )
-        {
-            raster.setPixel(i, y, blackColor);
-        }
-        */
     }
 
     public void drawHexagon(int x, int y, WritableRaster raster )
@@ -571,8 +481,58 @@ public class DrawPanel extends JPanel implements MouseListener {
     public void paint(Graphics g )
     {
         super.paint(g);
-        g.drawImage(img, 0, 0, img.getWidth(), img.getHeight(), null );
+        if ( !impactMode )
+            g.drawImage(img, 0, 0, img.getWidth(), img.getHeight(), null );
+        else
+            g.drawImage(doubleBuffer, 0, 0, doubleBuffer.getWidth(), doubleBuffer.getHeight(), null );
+
     }
+    /*void span(int x, int y, Color color )
+    {
+
+        int[] gotColor = null;
+        int[] basicColor = null;
+        int[] blackColor = {0,0,0};
+        int[] placeColor = {color.getRed(), color.getGreen(), color.getBlue(), 0};
+        int x1, y1;
+        gotColor = raster.getPixel(x, y, gotColor) ;
+        basicColor = raster.getPixel(x, y, basicColor) ;
+        x1 = x; y1 = y;
+        if ( blackColor[0] == gotColor[0] && blackColor[1] == gotColor[1] && blackColor[2] == gotColor[2] )
+            return; // lets us ignore black borders
+        while ( true )
+        {
+            if ( blackColor[0] == gotColor[0] && blackColor[1] == gotColor[1] && blackColor[2] == gotColor[2] )
+                break; // lets us ignore black borders
+            if ( gotColor[0] != basicColor[0] || gotColor[1] != basicColor[1] ||gotColor[2] != basicColor[2] )
+                break; // paint only basic color
+            int[] borders = spanBorders(x,y);
+            if ( y != y1 )
+                fillSpan(borders[0], borders[1]+1, y, color);
+            x = (borders[1]+borders[0])/2;
+            y++;
+            gotColor = raster.getPixel(x, y, gotColor) ;
+        }
+        x = x1; y = y1;
+        gotColor = raster.getPixel(x, y, gotColor) ;
+        while ( true )
+        {
+            if ( blackColor[0] == gotColor[0] && blackColor[1] == gotColor[1] && blackColor[2] == gotColor[2] )
+                break; // lets us ignore black borders
+            if ( gotColor[0] != basicColor[0] ||gotColor[1] != basicColor[1] ||gotColor[2] != basicColor[2] )
+                break;
+            int[] borders = spanBorders(x,y);
+            fillSpan(borders[0], borders[1]+1, y, color);
+            x = (borders[1]+borders[0])/2;
+            y--;
+            gotColor = raster.getPixel(x, y, gotColor) ;
+        }
+        //doubleBuffer = deepCopy(img);
+        //metricPrinter();
+        //this.repaint();
+
+    }
+    */
     void span(int x, int y, Color color )
     {
         if ( false )
@@ -786,6 +746,7 @@ public class DrawPanel extends JPanel implements MouseListener {
             ioe.printStackTrace();
         }
     }
+
     boolean compareColors( int[] color1, int[] color2 )
     {
         for ( int i = 0; i < 3; i++ )
@@ -921,4 +882,5 @@ public class DrawPanel extends JPanel implements MouseListener {
             }
         }
     }
+
 }

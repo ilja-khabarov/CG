@@ -102,19 +102,16 @@ public class MainFrame extends JFrame
         next.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                if ( !drawPanel.lifeModel.isInitiated() ) {
-                    System.out.println("initiating model");
+                if ( !drawPanel.lifeModel.isInitiated() )
                     drawPanel.initModel();
-                }
                 drawPanel.lifeModel.bypass();
                 if ( drawPanel.impactMode ) {
-                    System.out.println("IMPACT");
                     drawPanel.nullifyImage();
                     drawPanel.drawFieldFromModel();
                     drawPanel.metricPrinter();
-                    return;
                 }
-                drawPanel.drawFieldFromModel();
+                else
+                    drawPanel.drawFieldFromModel();
             }
         });
         options.addActionListener(new ActionListener() {
@@ -124,7 +121,7 @@ public class MainFrame extends JFrame
                 optionsFrame.setSize(450,500);
                 optionsFrame.setLocationRelativeTo(thislink);
                 optionsFrame.setLayout(new FlowLayout(FlowLayout.LEADING));
-                optionsFrame.add(new ControlsPane(drawPanel, xorButton) );
+                optionsFrame.add(new ControlsPane(drawPanel) );
                 optionsFrame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
                 optionsFrame.setVisible(true);
             }
